@@ -1,10 +1,3 @@
---[[
-                          Neverlose.cc UI Library
-    Author: 4lpaca
-	License: MIT
-    Discord: https://arceney.win/discord
-    Other-Projects: https://4lpaca.win
-]]
 
 do
 	local Constant = 'L'..'P'..'H'..'_NO_VIRTUALIZE';
@@ -4215,7 +4208,7 @@ function NeverLose:CreateWindow(Config)
 	WindowContent.Font = Enum.Font.GothamBold
 	WindowContent.Text = Window.Content
 	WindowContent.TextColor3 = Color3.fromRGB(255, 255, 255)
-	WindowContent.TextSize = 9.000
+	WindowContent.TextSize = 14
 	WindowContent.TextTransparency = 0.650
 	WindowContent.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -6194,7 +6187,7 @@ function NeverLose:CreateNotification()
 		NotifyContent.Font = Enum.Font.GothamBold
 		NotifyContent.Text = Config.Content
 		NotifyContent.TextColor3 = Color3.fromRGB(255, 255, 255)
-		NotifyContent.TextSize = 12.000
+		NotifyContent.TextSize = 14
 		NotifyContent.TextTransparency = 0.650
 		NotifyContent.TextXAlignment = Enum.TextXAlignment.Left
 
