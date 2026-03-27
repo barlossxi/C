@@ -1,5 +1,4 @@
 
-
 do
 	local Constant = 'L'..'P'..'H'..'_NO_VIRTUALIZE';
 	getfenv()[Constant] = getfenv()[Constant] or function(f) return f end;
@@ -3169,35 +3168,29 @@ NeverLose.ProcessDropdown = LPH_NO_VIRTUALIZE(function(value)
 end);
 
 NeverLose.ParseDropdown = LPH_NO_VIRTUALIZE(function(value)
-	if not value then 
-		return 'Select' 
-	end
-
-	local Out = ''
-
+	if not value then return 'Select'; end;
+	local Out;
 	if typeof(value) == 'table' then
+		local x = {}
 		if #value > 0 then
-			local temp = {}
-			for i, v in next, value do
-				table.insert(temp, tostring(v))
+			for i,v in next, value do
+				table.insert(x, tostring(v))
 			end
-			Out = table.concat(temp, ' , ')
 		else
-			local temp = {}
-			for k, v in next, value do
-				if v == true then
-					table.insert(temp, tostring(k))
+			for k,v in next, value do
+				if v then
+					table.insert(x, tostring(k))
 				end
 			end
-			Out = table.concat(temp, ' , ')
-			if Out == '' then
-				Out = 'Select'
-			end
+		end
+		Out = table.concat(x, ' , ')
+
+		if Out == "" then
+			Out = 'Select'
 		end
 	else
-		Out = tostring(value)
+		Out = tostring(value or 'Select')
 	end
-
 	return Out
 end)
 
