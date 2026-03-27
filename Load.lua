@@ -1,4 +1,5 @@
 
+
 do
 	local Constant = 'L'..'P'..'H'..'_NO_VIRTUALIZE';
 	getfenv()[Constant] = getfenv()[Constant] or function(f) return f end;
@@ -3088,32 +3089,28 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				end)));
 
 				if Config.Multi then
-					local _,bth_signal = NeverLose:CreateInput(ItemFrame , LPH_NO_VIRTUALIZE(function()
-						Config.Default[Value] = not Config.Default[Value];
+					local _, bth_signal = NeverLose:CreateInput(ItemFrame, LPH_NO_VIRTUALIZE(function()
+						if typeof(Config.Default) ~= 'table' then
+							Config.Default = {}
+						end
+						Config.Default[Value] = not Config.Default[Value]
+						MarkItem()
+						BasedLabel.Text = NeverLose.ParseDropdown(Config.Default)
+						Config.Callback(Config.Default)
+					end))
 
-						MarkItem();
-
-						BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
-
-						Config.Callback(Config.Default);
-					end));
-
-					table.insert(DropdownLib.Signals , bth_signal);
+					table.insert(DropdownLib.Signals, bth_signal)
 				else
-					local _,bth_signal = NeverLose:CreateInput(ItemFrame , LPH_NO_VIRTUALIZE(function()
-						Config.Default = Value;
-
-						for i,v in next , DropdownLib.Refuse do
-							task.spawn(v);
-						end;
-
-						BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
-
-						Config.Callback(Config.Default);
-					end));
-
-					table.insert(DropdownLib.Signals , bth_signal);
-				end;
+					local _, bth_signal = NeverLose:CreateInput(ItemFrame, LPH_NO_VIRTUALIZE(function()
+						Config.Default = Value
+						for i, v in next, DropdownLib.Refuse do
+							task.spawn(v)
+						end
+						BasedLabel.Text = NeverLose.ParseDropdown(Config.Default)
+						Config.Callback(Config.Default)
+					end))
+					table.insert(DropdownLib.Signals, bth_signal)
+				end
 			end;
 		end;
 
