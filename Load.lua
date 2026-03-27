@@ -1,3 +1,10 @@
+--[[
+                          Neverlose.cc UI Library
+    Author: 4lpaca
+	License: MIT
+    Discord: https://arceney.win/discord
+    Other-Projects: https://4lpaca.win
+]]
 
 do
 	local Constant = 'L'..'P'..'H'..'_NO_VIRTUALIZE';
@@ -3172,44 +3179,37 @@ NeverLose.ProcessDropdown = LPH_NO_VIRTUALIZE(function(value)
 end);
 
 NeverLose.ParseDropdown = LPH_NO_VIRTUALIZE(function(value)
-	if not value then return 'Select'; end;
+	if not value then 
+		return 'Select' 
+	end
 
-	local Out;
+	local Out = ''
 
 	if typeof(value) == 'table' then
 		if #value > 0 then
-			local x = {};
-
-			for i,v in next , value do
-				table.insert(x , tostring(v))
-			end;
-
-			Out = table.concat(x,' , ');
-
-			table.clear(x);
-		else
-			local x = {};
-
-			for i,v in next , value do
-				if v == true then
-					table.insert(x , tostring(i));
-				end			
-			end;
-
-			Out = table.concat(x,' , ');
-
-			table.clear(x)
-
-			if not Out:byte() then
-				Out = 'Select';
+			local temp = {}
+			for i, v in next, value do
+				table.insert(temp, tostring(v))
 			end
-		end;
+			Out = table.concat(temp, ' , ')
+		else
+			local temp = {}
+			for k, v in next, value do
+				if v == true then
+					table.insert(temp, tostring(k))
+				end
+			end
+			Out = table.concat(temp, ' , ')
+			if Out == '' then
+				Out = 'Select'
+			end
+		end
 	else
-		Out = tostring(value or 'Select');
-	end;
+		Out = tostring(value)
+	end
 
-	return Out;
-end);
+	return Out
+end)
 
 function NeverLose:ParseInput(Value , Numeric)
 	if not Value then
