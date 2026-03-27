@@ -1,10 +1,3 @@
---[[
-                          Neverlose.cc UI Library
-    Author: 4lpaca
-	License: MIT
-    Discord: https://arceney.win/discord
-    Other-Projects: https://4lpaca.win
-]]
 
 do
 	local Constant = 'L'..'P'..'H'..'_NO_VIRTUALIZE';
