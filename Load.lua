@@ -5187,7 +5187,7 @@ function NeverLose:CreateWindow(Config)
 				ConfigMenu.Parent = nil;
 			else
 
-				ConfigMenu.Visible = true;
+				ConfigMenu.Visible = false;
 				UIListLayout.Parent = ConfigMenu
 
 				if NeverLose.Global3DRenderMode then
