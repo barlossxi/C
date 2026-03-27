@@ -3154,56 +3154,80 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 end;
 
 NeverLose.ProcessDropdown = LPH_NO_VIRTUALIZE(function(value)
-    if typeof(value) == 'table' then
-        local data = {}
-        for i,v in next, value do
-            if typeof(v) == 'boolean' and typeof(i) ~= 'number' then
-                if v then
-                    data[i] = true
-                end
-            else
-                data[v] = true
-            end
-        end
-        return data
-    else
-        return value
-    end
-end)
+	if typeof(value) == 'table' then
+		local data = {};
+
+		for i,v in next , value do
+			if typeof(v) == 'boolean' and typeof(i) ~= 'number' then
+				data[i] = v;
+			else
+				data[v] = true;
+			end;
+		end;
+
+		return data;
+	else
+		return value;
+	end;
+end);
 
 NeverLose.ParseDropdown = LPH_NO_VIRTUALIZE(function(value)
-    if not value then return 'Select' end
-    if typeof(value) == 'table' then
-        local names = {}
-        for k,v in next, value do
-            if v then 
-                table.insert(names, tostring(k))
-            end
-        end
-        if #names == 0 then
-            return 'Select'
-        else
-            return names[1]
-        end
-    else
-        return tostring(value)
-    end
-end)
+	if not value then return 'Select'; end;
 
-function NeverLose:ParseInput(Value, Numeric)
-    if Value == nil then
-        return Numeric and 0 or ""
-    end
-    if Numeric then
-        local num = tonumber(Value)
-        if num then
-            return num
-        else
-            return 0
-        end
-    end
-    return tostring(Value)
-end
+	local Out;
+
+	if typeof(value) == 'table' then
+		if #value > 0 then
+			local x = {};
+
+			for i,v in next , value do
+				table.insert(x , tostring(v))
+			end;
+
+			Out = table.concat(x,' , ');
+
+			table.clear(x);
+		else
+			local x = {};
+
+			for i,v in next , value do
+				if v == true then
+					table.insert(x , tostring(i));
+				end			
+			end;
+
+			Out = table.concat(x,' , ');
+
+			table.clear(x)
+
+			if not Out:byte() then
+				Out = 'Select';
+			end
+		end;
+	else
+		Out = tostring(value or 'Select');
+	end;
+
+	return Out;
+end);
+
+function NeverLose:ParseInput(Value , Numeric)
+	if not Value then
+		return (Numeric and nil) or "";	
+	end;
+
+	if Numeric then
+		local out = string.gsub(tostring(Value), '[^0-9.%-]', '')
+
+		if tonumber(out) then
+			return tonumber(out);
+		end;
+
+		return nil;
+	end;
+
+	return Value;
+end;
 
 function NeverLose:CreateToolTips(Container: Frame , Name: string , Content: string)
 	local Tooltips = Instance.new("Frame")
