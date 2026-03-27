@@ -1,4 +1,10 @@
-
+--[[
+                          Neverlose.cc UI Library
+    Author: 4lpaca
+	License: MIT
+    Discord: https://arceney.win/discord
+    Other-Projects: https://4lpaca.win
+]]
 
 do
 	local Constant = 'L'..'P'..'H'..'_NO_VIRTUALIZE';
@@ -3157,34 +3163,34 @@ end;
 NeverLose.ProcessDropdown = LPH_NO_VIRTUALIZE(function(value)
     if typeof(value) == 'table' then
         local data = {}
-        for i, v in next, value do
-            if v then -- เก็บเฉพาะค่า true
-                table.insert(data, tostring(i))
+        for i,v in next, value do
+            if typeof(v) == 'boolean' and typeof(i) ~= 'number' then
+                if v then
+                    data[i] = true
+                end
+            else
+                data[v] = true
             end
         end
-        if #data == 0 then
-            return 'Select'
-        end
-        return table.concat(data, ' , ')
+        return data
     else
-        return tostring(value or 'Select')
+        return value
     end
 end)
-
 
 NeverLose.ParseDropdown = LPH_NO_VIRTUALIZE(function(value)
     if not value then return 'Select' end
     if typeof(value) == 'table' then
-        local x = {}
-        for k, v in next, value do
+        local names = {}
+        for k,v in next, value do
             if v then 
-                table.insert(x, tostring(k))
+                table.insert(names, tostring(k))
             end
         end
-        if #x == 0 then
+        if #names == 0 then
             return 'Select'
         else
-            return x[1]
+            return names[1]
         end
     else
         return tostring(value)
