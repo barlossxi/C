@@ -3400,20 +3400,17 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedFrame.Parent = Frame
 		BasedFrame.BackgroundColor3 = Color3.fromRGB(25, 27, 33)
 		BasedFrame.BackgroundTransparency = 1.000
-		BasedFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		BasedFrame.BorderSizePixel = 0
-		BasedFrame.Size = UDim2.new(1, 0, 0, 30)
+		BasedFrame.Size = UDim2.new(1, 0, 0, 30) -- ความสูงเริ่มต้น
 		BasedFrame.ZIndex = LayerIndex + 8
 
 		NeverLose:AddQuery(BasedFrame, Name);
 
 		BasedLabel.Name = NeverLose.RandomString();
 		BasedLabel.Parent = BasedFrame
-		BasedLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		BasedLabel.BackgroundTransparency = 1.000
-		BasedLabel.BorderSizePixel = 0
-		BasedLabel.Position = UDim2.new(0, 11, 0, 6)
-		BasedLabel.Size = UDim2.new(1, -22, 0, 15) -- ปรับความกว้างให้ยืดหยุ่น
+		BasedLabel.Position = UDim2.new(0, 11, 0, 8) -- ปรับ Position ให้มีช่องไฟด้านบน
+		BasedLabel.Size = UDim2.new(1, -22, 0, 15)
 		BasedLabel.ZIndex = LayerIndex + 9
 		BasedLabel.Font = Enum.Font.GothamMedium
 		BasedLabel.Text = Name
@@ -3421,8 +3418,8 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedLabel.TextSize = 13.000
 		BasedLabel.TextTransparency = 0.35
 		BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
-		BasedLabel.TextYAlignment = Enum.TextYAlignment.Top -- ให้เริ่มจากด้านบน
-		BasedLabel.TextWrapped = true -- เปิดการตัดบรรทัดอัตโนมัติ
+		BasedLabel.TextYAlignment = Enum.TextYAlignment.Top
+		BasedLabel.TextWrapped = true -- [[ แก้ไข: เปิดให้ตัวหนังสือตัดบรรทัดอัตโนมัติ ]]
 
 		LineFrame.Name = NeverLose.RandomString();
 		LineFrame.Parent = BasedFrame
@@ -3450,68 +3447,44 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 
 		UICorner.CornerRadius = UDim.new(0, 10)
 		UICorner.Parent = BasedFrame
+
 		local UpdateWarp = LPH_NO_VIRTUALIZE(function()
-			local maxWidth = BasedFrame.AbsoluteSize.X > 0 and (BasedFrame.AbsoluteSize.X - 25) or 220
-			
-			local size = TextService:GetTextSize(
-				BasedLabel.Text, 
-				BasedLabel.TextSize, 
-				BasedLabel.Font, 
+			if BasedFrame.AbsoluteSize.X == 0 then 
+				repeat task.wait() until BasedFrame.AbsoluteSize.X > 0 
+			end
+
+			local maxWidth = BasedFrame.AbsoluteSize.X - 25 
+			local textSize = TextService:GetTextSize(
+				BasedLabel.Text,
+				BasedLabel.TextSize,
+				BasedLabel.Font,
 				Vector2.new(maxWidth, math.huge)
-			);
-			local finalHeight = math.max(30, size.Y + 16)
-			
+			)
+
+			local finalHeight = math.max(30, textSize.Y + 18)
+
 			NeverLose.PlayAnimate(BasedFrame, SlowyTween, {
-				Size = UDim2.new(1, 0, 0, finalHeight);
+				Size = UDim2.new(1, 0, 0, finalHeight)
 			})
 
-			BasedLabel.Size = UDim2.new(1, -22, 0, size.Y)
+			BasedLabel.Size = UDim2.new(1, -22, 0, textSize.Y)
 		end);
 		if Warp then
-			task.spawn(function()
-				if BasedFrame.AbsoluteSize.X == 0 then
-					repeat task.wait() until BasedFrame.AbsoluteSize.X > 0
-				end
-				UpdateWarp();
-			end)
+			task.spawn(UpdateWarp)
 		end;
+
 		local handle = NeverLose:RegisiterHandler(BasedHandler, Signel);
 		handle.Root = BasedFrame;
 
 		handle.SetRender = LPH_NO_VIRTUALIZE(function(value)
-			local targetTrans = value and 0.35 or 1
-			local lineTrans = value and 0.65 or 1
-			
-			NeverLose.PlayAnimate(BasedFrame, SlowyTween, { BackgroundTransparency = 1 });
-			NeverLose.PlayAnimate(BasedLabel, SlowyTween, { TextTransparency = targetTrans })
-			NeverLose.PlayAnimate(LineFrame, SlowyTween, { BackgroundTransparency = lineTrans })
+			local trans = value and 0.35 or 1
+			NeverLose.PlayAnimate(BasedLabel, SlowyTween, { TextTransparency = trans })
+			NeverLose.PlayAnimate(LineFrame, SlowyTween, { BackgroundTransparency = value and 0.65 or 1 })
 		end);
 
-		function handle:SetVisible(val)
-			BasedFrame.Visible = val;
-		end;
-
-		NeverLose:AddSignal(BasedFrame.MouseEnter:Connect(LPH_NO_VIRTUALIZE(function()
-			NeverLose.PlayAnimate(BasedFrame, SlowyTween, { BackgroundTransparency = 0.35 });
-			NeverLose.PlayAnimate(BasedLabel, SlowyTween, { TextTransparency = 0.25 })
-		end)))
-
-		NeverLose:AddSignal(BasedFrame.MouseLeave:Connect(LPH_NO_VIRTUALIZE(function()
-			NeverLose.PlayAnimate(BasedFrame, SlowyTween, { BackgroundTransparency = 1 });
-			NeverLose.PlayAnimate(BasedLabel, SlowyTween, { TextTransparency = 0.35 })
-		end)))
-
 		function handle:SetText(t)
-			local oldtxt = BasedLabel.Text;
-			BasedLabel.Text = t;
-			if Warp and oldtxt ~= t then
-				UpdateWarp();
-			end;
-		end;
-
-		function handle:ToolTip(Content: string)
-			handle.ToolTip = NeverLose:CreateToolTips(BasedFrame, Name, Content);
-			return handle;
+			BasedLabel.Text = t
+			if Warp then UpdateWarp() end
 		end;
 
 		handle.SetRender(Signel:GetValue());
