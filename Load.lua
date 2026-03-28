@@ -3388,7 +3388,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 	local idx = {};
 	local LayerIndex = Frame.ZIndex;
 
-	function idx:AddLabel(Name: string,Warp: boolean)
+	function idx:AddLabel(Name: string, Warp: boolean)
 		local BasedFrame = Instance.new("Frame")
 		local BasedLabel = Instance.new("TextLabel")
 		local LineFrame = Instance.new("Frame")
@@ -3405,16 +3405,15 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedFrame.Size = UDim2.new(1, 0, 0, 30)
 		BasedFrame.ZIndex = LayerIndex + 8
 
-		NeverLose:AddQuery(BasedFrame , Name);
+		NeverLose:AddQuery(BasedFrame, Name);
 
 		BasedLabel.Name = NeverLose.RandomString();
 		BasedLabel.Parent = BasedFrame
 		BasedLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		BasedLabel.BackgroundTransparency = 1.000
-		BasedLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		BasedLabel.BorderSizePixel = 0
 		BasedLabel.Position = UDim2.new(0, 11, 0, 6)
-		BasedLabel.Size = UDim2.new(0,1, 0, 15)
+		BasedLabel.Size = UDim2.new(1, -22, 0, 15) -- ปรับความกว้างให้ยืดหยุ่น
 		BasedLabel.ZIndex = LayerIndex + 9
 		BasedLabel.Font = Enum.Font.GothamMedium
 		BasedLabel.Text = Name
@@ -3422,14 +3421,14 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedLabel.TextSize = 13.000
 		BasedLabel.TextTransparency = 0.35
 		BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
+		BasedLabel.TextYAlignment = Enum.TextYAlignment.Top -- ให้เริ่มจากด้านบน
+		BasedLabel.TextWrapped = true -- เปิดการตัดบรรทัดอัตโนมัติ
 
 		LineFrame.Name = NeverLose.RandomString();
 		LineFrame.Parent = BasedFrame
 		LineFrame.AnchorPoint = Vector2.new(0.5, 1)
 		LineFrame.BackgroundColor3 = Color3.fromRGB(45, 48, 58)
 		LineFrame.BackgroundTransparency = 0.650
-		LineFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		LineFrame.BorderSizePixel = 0
 		LineFrame.Position = UDim2.new(0.5, 0, 1, 0)
 		LineFrame.Size = UDim2.new(1, -20, 0, 1)
 		LineFrame.ZIndex = LayerIndex + 11
@@ -3437,10 +3436,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedHandler.Name = NeverLose.RandomString();
 		BasedHandler.Parent = BasedFrame
 		BasedHandler.AnchorPoint = Vector2.new(1, 0)
-		BasedHandler.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		BasedHandler.BackgroundTransparency = 1.000
-		BasedHandler.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		BasedHandler.BorderSizePixel = 0
 		BasedHandler.Position = UDim2.new(1, -11, 0, 2)
 		BasedHandler.Size = UDim2.new(1, -20, 0, 25)
 		BasedHandler.ZIndex = LayerIndex + 12
@@ -3454,51 +3450,41 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 
 		UICorner.CornerRadius = UDim.new(0, 10)
 		UICorner.Parent = BasedFrame
-
 		local UpdateWarp = LPH_NO_VIRTUALIZE(function()
-			local size = TextService:GetTextSize(BasedLabel.Text , BasedLabel.TextSize , BasedLabel.Font , Vector2.new(math.huge,math.huge));
-			NeverLose.PlayAnimate(BasedFrame , SlowyTween , {
-				Size = UDim2.new(1, 0, 0, size.Y + 13);
+			local maxWidth = BasedFrame.AbsoluteSize.X > 0 and (BasedFrame.AbsoluteSize.X - 25) or 220
+			
+			local size = TextService:GetTextSize(
+				BasedLabel.Text, 
+				BasedLabel.TextSize, 
+				BasedLabel.Font, 
+				Vector2.new(maxWidth, math.huge)
+			);
+			local finalHeight = math.max(30, size.Y + 16)
+			
+			NeverLose.PlayAnimate(BasedFrame, SlowyTween, {
+				Size = UDim2.new(1, 0, 0, finalHeight);
 			})
 
-			BasedLabel.Size = UDim2.new(1, -35, 1, 0)
-			BasedLabel.TextYAlignment = Enum.TextYAlignment.Top;
+			BasedLabel.Size = UDim2.new(1, -22, 0, size.Y)
 		end);
-
 		if Warp then
-			UpdateWarp();
+			task.spawn(function()
+				if BasedFrame.AbsoluteSize.X == 0 then
+					repeat task.wait() until BasedFrame.AbsoluteSize.X > 0
+				end
+				UpdateWarp();
+			end)
 		end;
-
-		local handle = NeverLose:RegisiterHandler(BasedHandler , Signel);
-
+		local handle = NeverLose:RegisiterHandler(BasedHandler, Signel);
 		handle.Root = BasedFrame;
 
 		handle.SetRender = LPH_NO_VIRTUALIZE(function(value)
-			if value then
-				NeverLose.PlayAnimate(BasedFrame , SlowyTween , {
-					BackgroundTransparency = 1
-				});
-
-				NeverLose.PlayAnimate(BasedLabel , SlowyTween , {
-					TextTransparency = 0.35
-				})
-
-				NeverLose.PlayAnimate(LineFrame , SlowyTween , {
-					BackgroundTransparency = 0.650
-				})
-			else
-				NeverLose.PlayAnimate(BasedFrame , SlowyTween , {
-					BackgroundTransparency = 1
-				});
-
-				NeverLose.PlayAnimate(BasedLabel , SlowyTween , {
-					TextTransparency = 1
-				})
-
-				NeverLose.PlayAnimate(LineFrame , SlowyTween , {
-					BackgroundTransparency = 1
-				})
-			end;
+			local targetTrans = value and 0.35 or 1
+			local lineTrans = value and 0.65 or 1
+			
+			NeverLose.PlayAnimate(BasedFrame, SlowyTween, { BackgroundTransparency = 1 });
+			NeverLose.PlayAnimate(BasedLabel, SlowyTween, { TextTransparency = targetTrans })
+			NeverLose.PlayAnimate(LineFrame, SlowyTween, { BackgroundTransparency = lineTrans })
 		end);
 
 		function handle:SetVisible(val)
@@ -3506,39 +3492,25 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		end;
 
 		NeverLose:AddSignal(BasedFrame.MouseEnter:Connect(LPH_NO_VIRTUALIZE(function()
-			NeverLose.PlayAnimate(BasedFrame , SlowyTween , {
-				BackgroundTransparency = 0.35
-			});
-
-			NeverLose.PlayAnimate(BasedLabel , SlowyTween , {
-				TextTransparency = 0.25
-			})
-
+			NeverLose.PlayAnimate(BasedFrame, SlowyTween, { BackgroundTransparency = 0.35 });
+			NeverLose.PlayAnimate(BasedLabel, SlowyTween, { TextTransparency = 0.25 })
 		end)))
 
 		NeverLose:AddSignal(BasedFrame.MouseLeave:Connect(LPH_NO_VIRTUALIZE(function()
-			NeverLose.PlayAnimate(BasedFrame , SlowyTween , {
-				BackgroundTransparency = 1
-			});
-
-			NeverLose.PlayAnimate(BasedLabel , SlowyTween , {
-				TextTransparency = 0.35
-			})
+			NeverLose.PlayAnimate(BasedFrame, SlowyTween, { BackgroundTransparency = 1 });
+			NeverLose.PlayAnimate(BasedLabel, SlowyTween, { TextTransparency = 0.35 })
 		end)))
 
 		function handle:SetText(t)
 			local oldtxt = BasedLabel.Text;
-
 			BasedLabel.Text = t;
-
 			if Warp and oldtxt ~= t then
 				UpdateWarp();
 			end;
 		end;
 
 		function handle:ToolTip(Content: string)
-			handle.ToolTip = NeverLose:CreateToolTips(BasedFrame , Name , Content);
-
+			handle.ToolTip = NeverLose:CreateToolTips(BasedFrame, Name, Content);
 			return handle;
 		end;
 
