@@ -3409,8 +3409,8 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedLabel.Name = NeverLose.RandomString();
 		BasedLabel.Parent = BasedFrame
 		BasedLabel.BackgroundTransparency = 1.000
-		BasedLabel.Position = UDim2.new(0, 11, 0, 8) -- ปรับ Position ให้มีช่องไฟด้านบน
-		BasedLabel.Size = UDim2.new(1, -22, 0, 15)
+		BasedLabel.Position = UDim2.new(0, 11, 0, 8) -- ปรับตำแหน่งให้อยู่กลางสวยๆ
+		BasedLabel.Size = UDim2.new(1, -22, 0, 15) -- ความกว้างลบ Padding ออก
 		BasedLabel.ZIndex = LayerIndex + 9
 		BasedLabel.Font = Enum.Font.GothamMedium
 		BasedLabel.Text = Name
@@ -3419,7 +3419,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedLabel.TextTransparency = 0.35
 		BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
 		BasedLabel.TextYAlignment = Enum.TextYAlignment.Top
-		BasedLabel.TextWrapped = true -- [[ แก้ไข: เปิดให้ตัวหนังสือตัดบรรทัดอัตโนมัติ ]]
+		BasedLabel.TextWrapped = true -- [[ บังคับให้ข้อความตัดบรรทัดเองเมื่อสุดขอบ ]]
 
 		LineFrame.Name = NeverLose.RandomString();
 		LineFrame.Parent = BasedFrame
@@ -3447,20 +3447,17 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 
 		UICorner.CornerRadius = UDim.new(0, 10)
 		UICorner.Parent = BasedFrame
-
 		local UpdateWarp = LPH_NO_VIRTUALIZE(function()
-			if BasedFrame.AbsoluteSize.X == 0 then 
-				repeat task.wait() until BasedFrame.AbsoluteSize.X > 0 
+			while BasedFrame.AbsoluteSize.X <= 0 do
+				task.wait()
 			end
-
-			local maxWidth = BasedFrame.AbsoluteSize.X - 25 
+			local maxWidth = BasedFrame.AbsoluteSize.X - 25
 			local textSize = TextService:GetTextSize(
 				BasedLabel.Text,
 				BasedLabel.TextSize,
 				BasedLabel.Font,
 				Vector2.new(maxWidth, math.huge)
 			)
-
 			local finalHeight = math.max(30, textSize.Y + 18)
 
 			NeverLose.PlayAnimate(BasedFrame, SlowyTween, {
@@ -3470,9 +3467,8 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 			BasedLabel.Size = UDim2.new(1, -22, 0, textSize.Y)
 		end);
 		if Warp then
-			task.spawn(UpdateWarp)
+			task.defer(UpdateWarp) 
 		end;
-
 		local handle = NeverLose:RegisiterHandler(BasedHandler, Signel);
 		handle.Root = BasedFrame;
 
@@ -3487,12 +3483,16 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 			if Warp then UpdateWarp() end
 		end;
 
+		function handle:ToolTip(Content: string)
+			handle.ToolTip = NeverLose:CreateToolTips(BasedFrame, Name, Content);
+			return handle;
+		end;
+
 		handle.SetRender(Signel:GetValue());
 		Signel:Connect(handle.SetRender);
 
 		return handle;
 	end;
-
 	function idx:AddButton(Config)
 		Config = NeverLose:ProcessParams(Config , {
 			Icon = 'chevron-large-left',
