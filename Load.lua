@@ -12,7 +12,6 @@ getgenv = getgenv or getfenv;
 local LOAD_ENV = LPH_NO_VIRTUALIZE(function()
 	if game:GetService('RunService'):IsStudio() then
 		local BaseWorkspace = Instance.new('Folder',game:GetService("ReplicatedFirst"));
-
 		BaseWorkspace.Name = 'PRI\0.'..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)));
 
 		local __get_path_c = function(path)
@@ -182,11 +181,11 @@ GlobalWindow.ResetOnSpawn = false;
 GlobalWindow.Parent = CoreGui;
 
 NeverLose.Scales = {
-	Small = UDim2.fromOffset(540,380),
-	Mobile = UDim2.fromOffset(640,385),
-	Default = UDim2.fromOffset(640 , 480),
-	Large = UDim2.fromOffset(800 , 600)
-};
+    Small = UDim2.fromOffset(680, 360),
+    Mobile = UDim2.fromOffset(700, 380),
+    Default = UDim2.fromOffset(780, 430),
+    Large = UDim2.fromOffset(880, 500)
+}
 
 NeverLose.IconColor = Color3.fromRGB(255, 255, 255);
 NeverLose.ScreenGui = GlobalWindow;
@@ -6578,5 +6577,3 @@ function NeverLose:Unload()
 end;
 
 return NeverLose;
-
-
