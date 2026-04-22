@@ -3136,19 +3136,24 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 
 		function DropdownLib:SetValues(a)
 			Config.Values = a;
-
-			if not Config.AutoUpdate then
-				DropdownLib:Generate();
-			end;
-		end;
-
+			if Config.Multi then
+				local newDefault = {}
+				for _, v in next, a do
+					newDefault[v] = Config.Default and Config.Default[v] or false
+				end
+				Config.Default = newDefault
+			else
+				if not table.find(a, Config.Default) then
+					Config.Default = a[1]
+				end
+			end
+			DropdownLib:Generate()
+		end
 		if Config.Flag then
 			NeverLose.Flags[Config.Flag] = DropdownLib;
 		end;
-
 		return DropdownLib;
 	end;
-
 	return handle;
 end;
 
