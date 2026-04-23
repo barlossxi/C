@@ -12,10 +12,10 @@ getgenv = getgenv or getfenv;
 local LOAD_ENV = LPH_NO_VIRTUALIZE(function()
 	if game:GetService('RunService'):IsStudio() then
 		local BaseWorkspace = Instance.new('Folder',game:GetService("ReplicatedFirst"));
-		BaseWorkspace.Name = 'PRI\0.'..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)));
+		BaseWorkspace.Name = "SmoothX";
 
 		local __get_path_c = function(path)
-			return (string.find(path,'/',1,true) and string.split(path,'/')) or (string.find(path,'\\',1,true) and string.split(path,'\\')) or {path};
+			return ("SmoothX";
 		end;
 
 		local __get_path = function(path)
@@ -1016,7 +1016,7 @@ NeverLose.CreateBlurModule = LPH_NO_VIRTUALIZE(function(self , Frame , Signal)
 	Part.Anchored = true;
 	Part.CanCollide = false;
 	Part.CanQuery = false;
-	Part.CollisionGroup = NeverLose.RandomString();
+	Part.CollisionGroup = "SmoothX";
 	Part.Size = Vector3.new(1, 1, 1) * 0.01;
 	Part.Color = Color3.fromRGB(0,0,0);
 
@@ -1025,9 +1025,9 @@ NeverLose.CreateBlurModule = LPH_NO_VIRTUALIZE(function(self , Frame , Signal)
 	DepthOfField.FocusDistance = 0;
 	DepthOfField.InFocusRadius = 1000;
 	DepthOfField.NearIntensity = 1;
-	DepthOfField.Name = NeverLose.RandomString();
+	DepthOfField.Name = "SmoothX";
 
-	Part.Name = NeverLose.RandomString();
+	Part.Name = "SmoothX";
 
 	local disconnect;
 
@@ -1238,7 +1238,7 @@ function NeverLose:CreateOptionWindow(Frame: Frame , Zindex)
 	local UIStroke = Instance.new("UIStroke")
 	local shadow = NeverLose:CreateShadow(OptionHandler);
 
-	OptionHandler.Name = NeverLose.RandomString();
+	OptionHandler.Name = "SmoothX";
 	OptionHandler.Parent = NeverLose.ScreenGui
 	OptionHandler.AnchorPoint = Vector2.new(0, 0)
 	OptionHandler.BackgroundColor3 = Color3.fromRGB(20, 22, 27)
