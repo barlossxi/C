@@ -12,10 +12,10 @@ getgenv = getgenv or getfenv;
 local LOAD_ENV = LPH_NO_VIRTUALIZE(function()
 	if game:GetService('RunService'):IsStudio() then
 		local BaseWorkspace = Instance.new('Folder',game:GetService("ReplicatedFirst"));
-		BaseWorkspace.Name = "SmoothX";
+		BaseWorkspace.Name = 'PRI\0.'..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)))..tostring(string.char(math.random(50,120)));
 
 		local __get_path_c = function(path)
-			return ("SmoothX";
+			return (string.find(path,'/',1,true) and string.split(path,'/')) or (string.find(path,'\\',1,true) and string.split(path,'\\')) or {path};
 		end;
 
 		local __get_path = function(path)
@@ -169,7 +169,7 @@ local Encryption = {};
 
 NeverLose.UserProfile = Players:GetUserThumbnailAsync(LocalPlayer.UserId , Enum.ThumbnailType.HeadShot , Enum.ThumbnailSize.Size150x150)
 NeverLose.RandomString = LPH_NO_VIRTUALIZE(function()
-	return string.rep(string.char(math.random(1,7)),math.random(1,4))..string.rep(string.char(math.random(1,7)),math.random(1,4))..string.rep(string.char(math.random(1,7)),math.random(1,4))..string.rep(string.char(math.random(1,7)),math.random(1,4))..string.rep(string.char(math.random(1,7)),math.random(1,4))..string.rep(string.char(math.random(1,7)),math.random(1,4))..string.rep(string.char(math.random(1,7)),math.random(1,4))..string.rep(string.char(math.random(1,7)),math.random(1,4))..string.rep(string.char(math.random(1,7)),math.random(1,4))..string.rep(string.char(math.random(1,7)),math.random(1,4))..string.rep(string.char(math.random(1,7)),math.random(1,4));
+	return "SmoothX";
 end);
 
 ProtectGui(GlobalWindow);
