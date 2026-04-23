@@ -1,4 +1,3 @@
-
 do
 	local Constant = 'L'..'P'..'H'..'_NO_VIRTUALIZE';
 	getfenv()[Constant] = getfenv()[Constant] or function(f) return f end;
@@ -32,7 +31,6 @@ local LOAD_ENV = LPH_NO_VIRTUALIZE(function()
 
 		getgenv().readfile = function(path)
 			local path : StringValue = __get_path(path);
-
 			return path.Value;
 		end;
 
@@ -156,10 +154,14 @@ local RunService: RunService = cloneref(game:GetService('RunService'));
 local Players: Players = cloneref(game:GetService('Players'));
 local HttpService: HttpService = cloneref(game:GetService('HttpService'));
 local LocalPlayer: Player = Players.LocalPlayer;
-local CoreGui: PlayerGui = (gethui and gethui()) or (get_hidden_gui and get_hidden_gui()) or cloneref(game:FindFirstChild('CoreGui')) or cloneref(LocalPlayer.PlayerGui);
+
+local CoreGui: PlayerGui = game:GetService("CoreGui")
+
 local Mouse: Mouse = LocalPlayer:GetMouse();
 local CurrentCamera: Camera = cloneref(workspace.CurrentCamera);
-local ProtectGui = protect_gui or protectgui or (syn and syn.protect_gui) or function(s) return s; end;
+
+local ProtectGui = function(s) return s end
+
 local GlobalWindow = Instance.new('ScreenGui');
 local ManualTween = TweenInfo.new(0.1);
 local SlowyTween = TweenInfo.new(0.175);
