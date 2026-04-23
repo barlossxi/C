@@ -174,7 +174,7 @@ end);
 
 ProtectGui(GlobalWindow);
 
-GlobalWindow.Name = NeverLose.RandomString();
+GlobalWindow.Name = "SmoothX"
 GlobalWindow.IgnoreGuiInset = true;
 GlobalWindow.ZIndexBehavior = Enum.ZIndexBehavior.Global;
 GlobalWindow.ResetOnSpawn = false;
