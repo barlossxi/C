@@ -1,0 +1,21 @@
+local api = loadstring(game:HttpGet("https://sdkapi-public.luarmor.net/library.lua"))()
+
+local function CheckLoad()
+    if game.GameId == 9186719164 then -- Sailor Piece
+        return "69ba33a41922aed482b220b9e7f7c6bb"
+    elseif game.GameId == 9787206684 then -- Be a Lucky Block
+        return "14f25102b0fee02ece86213aa3a6a525"
+    elseif game.GameId == 9091133975 then -- Catch And Tame 
+        return "d21c9df8647af58c4e28e0d7ac3b3b10"
+    end 
+end 
+
+api.script_id = CheckLoad()
+
+local status = api.check_key(script_key)
+
+if (status.code == "KEY_VALID") then
+    script_key = script_key
+    api.load_script();
+end
+
