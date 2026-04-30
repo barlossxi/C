@@ -190,7 +190,7 @@ NeverLose.Scales = {
 NeverLose.IconColor = Color3.fromRGB(255, 255, 255);
 NeverLose.ScreenGui = GlobalWindow;
 NeverLose.Flags = {};
-NeverLose.AccentColor = Color3.fromRGB(9, 212, 148);
+NeverLose.AccentColor = Color3.fromRGB(70, 231, 180);
 NeverLose.MainColor = Color3.fromRGB(8, 8, 13);
 NeverLose.RegisiteryColor = {};
 NeverLose.NameRegisitry = {};
@@ -4114,18 +4114,17 @@ function NeverLose:CreateWindow(Config)
 	HeadFrame.Size = UDim2.new(1, 0, 0, 50)
 	HeadFrame.ZIndex = 7
 
-	LogoImage.Name = NeverLose.RandomString();
-	LogoImage.Parent = HeadFrame
-	LogoImage.AnchorPoint = Vector2.new(0, 0.5)
-	LogoImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	LogoImage.BackgroundTransparency = 1.000
-	LogoImage.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	LogoImage.BorderSizePixel = 0
-	LogoImage.Position = UDim2.new(0, 10, 0.5, 0)
-	LogoImage.Size = UDim2.new(0, 45, 0, 45)
-	LogoImage.ZIndex = 7
-	LogoImage.Image = Window.Logo
-	LogoImage.ImageColor3 = NeverLose.IconColor
+    LogoImage.Name = NeverLose.RandomString()
+    LogoImage.Parent = HeadFrame
+    LogoImage.AnchorPoint = Vector2.new(0, 0.5)
+    LogoImage.BackgroundTransparency = 1
+    LogoImage.BorderSizePixel = 0
+    LogoImage.Position = UDim2.new(0, 15, 0.5, 0)
+    LogoImage.Size = UDim2.new(0, 50, 0, 50)
+    LogoImage.ZIndex = 7
+    LogoImage.Image = Window.Logo
+    LogoImage.ImageColor3 = NeverLose.IconColor
+    LogoImage.ScaleType = Enum.ScaleType.Fit
 
 	UICorner_2.CornerRadius = UDim.new(0, 7)
 	UICorner_2.Parent = LogoImage
@@ -6093,20 +6092,18 @@ function NeverLose:CreateNotification()
 		UIStroke.Color = Color3.fromRGB(45, 48, 58)
 		UIStroke.Parent = NotifyFrame
 
-        LogoImage.Name = NeverLose.RandomString()
-        LogoImage.Parent = NotifyFrame
-        LogoImage.AnchorPoint = Vector2.new(0, 0.5)
-        LogoImage.BackgroundTransparency = 1
-        LogoImage.BorderSizePixel = 0
-
-        LogoImage.Position = UDim2.new(0, 15, 0.5, 0)
-        LogoImage.Size = UDim2.new(0, 45, 0, 45)
-
-        LogoImage.ZIndex = 131
-        LogoImage.Image = Config.Logo
-        LogoImage.ImageColor3 = NeverLose.IconColor
-
-        LogoImage.ScaleType = Enum.ScaleType.Fit
+		LogoImage.Name = NeverLose.RandomString();
+		LogoImage.Parent = NotifyFrame
+		LogoImage.AnchorPoint = Vector2.new(0, 0.5)
+		LogoImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		LogoImage.BackgroundTransparency = 1.000
+		LogoImage.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		LogoImage.BorderSizePixel = 0
+		LogoImage.Position = UDim2.new(0, 10, 0.5, 0)
+		LogoImage.Size = UDim2.new(0, 35, 0, 35)
+		LogoImage.ZIndex = 131
+		LogoImage.Image = Config.Logo
+		LogoImage.ImageColor3 = NeverLose.IconColor;
 
 		UICorner_2.CornerRadius = UDim.new(0, 7)
 		UICorner_2.Parent = LogoImage
