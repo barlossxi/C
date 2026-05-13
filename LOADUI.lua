@@ -181,16 +181,14 @@ GlobalWindow.ResetOnSpawn = false;
 GlobalWindow.Parent = CoreGui;
 
 NeverLose.Scales = {
-    Small = UDim2.fromOffset(680, 360),
     Mobile = UDim2.fromOffset(700, 380),
-    Default = UDim2.fromOffset(780, 430),
-    Large = UDim2.fromOffset(880, 500)
+    PC = UDim2.fromOffset(880, 500)
 }
 
 NeverLose.IconColor = Color3.fromRGB(255, 255, 255);
 NeverLose.ScreenGui = GlobalWindow;
 NeverLose.Flags = {};
-NeverLose.AccentColor = Color3.fromRGB(70, 231, 180);
+NeverLose.AccentColor = Color3.fromRGB(67, 169, 75);
 NeverLose.MainColor = Color3.fromRGB(8, 8, 13);
 NeverLose.RegisiteryColor = {};
 NeverLose.NameRegisitry = {};
@@ -6635,4 +6633,4 @@ function NeverLose:Unload()
 	end;
 end;
 
-return NeverLose;
+return NeverLose; 
