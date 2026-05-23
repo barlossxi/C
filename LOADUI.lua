@@ -3551,7 +3551,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 	end;
 	function idx:AddButton(Config)
         Config = NeverLose:ProcessParams(Config , {
-            Icon = 'chevron-large-left',
+            Icon = nil or false,
             Name = "Button",
             Callback = EmptyFunction,
             ToolTip = nil,
