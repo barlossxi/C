@@ -3551,19 +3551,21 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 	end;
 	function idx:AddButton(Config)
         Config = NeverLose:ProcessParams(Config , {
-            Icon = 'chevron-large-left',
-            IconType = "Text", -- "Text" | "Image"
+            Icon = false or nil,
             Name = "Button",
             Callback = EmptyFunction,
             ToolTip = nil,
         });
+
         local Button = {};
         local ButtonFrame = Instance.new("Frame")
         local BasedLabel = Instance.new("TextLabel")
         local LineFrame = Instance.new("Frame")
         local UICorner = Instance.new("UICorner")
         local Icon
+
         NeverLose:AddQuery(ButtonFrame , Config.Name);
+
         ButtonFrame.Name = NeverLose.RandomString();
         ButtonFrame.Parent = Frame
         ButtonFrame.BackgroundColor3 = Color3.fromRGB(25, 27, 33)
@@ -3572,6 +3574,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
         ButtonFrame.BorderSizePixel = 0
         ButtonFrame.Size = UDim2.new(1, 0, 0, 30)
         ButtonFrame.ZIndex = LayerIndex + 8
+
         BasedLabel.Name = NeverLose.RandomString();
         BasedLabel.Parent = ButtonFrame
         BasedLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -3587,6 +3590,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
         BasedLabel.TextSize = 13.000
         BasedLabel.TextTransparency = 0.200
         BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
+
         LineFrame.Name = NeverLose.RandomString();
         LineFrame.Parent = ButtonFrame
         LineFrame.AnchorPoint = Vector2.new(0.5, 1)
@@ -3597,24 +3601,15 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
         LineFrame.Position = UDim2.new(0.5, 0, 1, 0)
         LineFrame.Size = UDim2.new(1, -20, 0, 1)
         LineFrame.ZIndex = LayerIndex + 11
+
         UICorner.CornerRadius = UDim.new(0, 10)
         UICorner.Parent = ButtonFrame
-        if Config.IconType == "Image" then
-            Icon = Instance.new("ImageLabel")
-            Icon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            Icon.BackgroundTransparency = 1
-            Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
-            Icon.BorderSizePixel = 0
-            Icon.Position = UDim2.new(0, 11, 0, 6)
-            Icon.Size = UDim2.new(0, 18, 0, 18)
-            Icon.ZIndex = LayerIndex + 9
-            Icon.ImageTransparency = 0.25
-            Icon.ScaleType = Enum.ScaleType.Fit
-            if Config.Icon then
-                Icon.Image = Config.Icon
-            end
-        else
+
+        if Config.Icon ~= nil then
             Icon = Instance.new("TextLabel")
+            Icon.Name = NeverLose.RandomString();
+            Icon.Parent = ButtonFrame
+
             Icon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             Icon.BackgroundTransparency = 1.000
             Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -3629,31 +3624,33 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
             Icon.TextTransparency = 0.250
             Icon.TextWrapped = true
         end
-        Icon.Name = NeverLose.RandomString();
-        Icon.Parent = ButtonFrame
+
         local bth = NeverLose:CreateInput(ButtonFrame , LPH_NO_VIRTUALIZE(function()
             Config.Callback();
         end));
+
         NeverLose:AddSignal(bth.MouseEnter:Connect(LPH_NO_VIRTUALIZE(function()
             NeverLose.PlayAnimate(ButtonFrame , SlowyTween , {
                 BackgroundTransparency = 0.35
             });
         end)))
+
         NeverLose:AddSignal(bth.MouseLeave:Connect(LPH_NO_VIRTUALIZE(function()
             NeverLose.PlayAnimate(ButtonFrame , SlowyTween , {
                 BackgroundTransparency = 1
             });
         end)))
+
         function Button:SetText(t)
             BasedLabel.Text = t;
         end;
+
         function Button:SetIcon(t)
-            if typeof(Icon) == "ImageLabel" then
-                Icon.Image = t
-            else
+            if Icon then
                 Icon.Text = t
             end
         end;
+
         Button.SetRender = LPH_NO_VIRTUALIZE(function(value)
             if value then
                 NeverLose.PlayAnimate(ButtonFrame , SlowyTween , {
@@ -3668,13 +3665,9 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
                     BackgroundTransparency = 0.650
                 });
 
-                if typeof(Icon) == "TextLabel" then
+                if Icon then
                     NeverLose.PlayAnimate(Icon , SlowyTween , {
                         TextTransparency = 0.250
-                    });
-                else
-                    NeverLose.PlayAnimate(Icon , SlowyTween , {
-                        ImageTransparency = 0.250
                     });
                 end
             else
@@ -3690,17 +3683,21 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
                     BackgroundTransparency = 1
                 });
 
-                NeverLose.PlayAnimate(Icon , SlowyTween , {
-                    TextTransparency = 1,
-                    ImageTransparency = 1
-                });
+                if Icon then
+                    NeverLose.PlayAnimate(Icon , SlowyTween , {
+                        TextTransparency = 1
+                    });
+                end
             end;
         end);
+
         if Config.ToolTip then
             Button.ToolTip = NeverLose:CreateToolTips(ButtonFrame , Config.Name , Config.ToolTip);
         end;
+
         Button.SetRender(Signel:GetValue())
         Signel:Connect(Button.SetRender);
+
         return Button;
     end
 
