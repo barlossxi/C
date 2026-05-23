@@ -3551,7 +3551,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 	end;
 	function idx:AddButton(Config)
         Config = NeverLose:ProcessParams(Config , {
-            Icon = false or nil,
+            Icon = 'chevron-large-left',
             Name = "Button",
             Callback = EmptyFunction,
             ToolTip = nil,
@@ -3575,13 +3575,15 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
         ButtonFrame.Size = UDim2.new(1, 0, 0, 30)
         ButtonFrame.ZIndex = LayerIndex + 8
 
+        local labelOffset = Config.Icon ~= nil and 35 or 11
+
         BasedLabel.Name = NeverLose.RandomString();
         BasedLabel.Parent = ButtonFrame
         BasedLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         BasedLabel.BackgroundTransparency = 1.000
         BasedLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
         BasedLabel.BorderSizePixel = 0
-        BasedLabel.Position = UDim2.new(0, 35, 0, 6)
+        BasedLabel.Position = UDim2.new(0, labelOffset, 0, 6)
         BasedLabel.Size = UDim2.new(0,1, 0, 15)
         BasedLabel.ZIndex = LayerIndex + 9
         BasedLabel.Font = Enum.Font.GothamMedium
