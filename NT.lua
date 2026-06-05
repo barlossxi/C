@@ -1723,7 +1723,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				});
 			end;
 
-			LoadText()rIcon
+			LoadText()
 
 			Config.Callback(Config.Default);
 		end;
