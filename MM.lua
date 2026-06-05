@@ -337,8 +337,9 @@ function NeverLose:GetIcon(a)
 end
 
 function NeverLose:SetIconTarget(label: Instance, icon: string, iconColor: Color3?)
+	local resolved = NeverLose:GetIcon(icon or "")
 	local image = label:FindFirstChild("_IconImage")
-	local isAsset = typeof(icon) == "string" and string.find(icon, "rbxassetid://", 1, true)
+	local isAsset = typeof(resolved) == "string" and string.find(resolved, "rbxassetid://", 1, true)
 
 	if isAsset then
 		if not image then
@@ -348,8 +349,17 @@ function NeverLose:SetIconTarget(label: Instance, icon: string, iconColor: Color
 			image.BorderSizePixel = 0
 			image.Position = UDim2.fromScale(0, 0)
 			image.Size = UDim2.fromScale(1, 1)
+			image.ScaleType = Enum.ScaleType.Fit
 			image.ZIndex = label.ZIndex + 1
 			image.Parent = label
+
+			if label:IsA("TextLabel") then
+				label:GetPropertyChangedSignal("TextTransparency"):Connect(function()
+					if image and image.Parent then
+						image.ImageTransparency = label.TextTransparency
+					end
+				end)
+			end
 		end
 
 		if label:IsA("TextLabel") then
@@ -357,7 +367,7 @@ function NeverLose:SetIconTarget(label: Instance, icon: string, iconColor: Color
 			label.TextTransparency = 1
 		end
 
-		image.Image = icon
+		image.Image = resolved
 		image.ImageColor3 = iconColor or Color3.new(1, 1, 1)
 		image.ImageTransparency = 0
 		image.Visible = true
@@ -367,7 +377,7 @@ function NeverLose:SetIconTarget(label: Instance, icon: string, iconColor: Color
 		end
 
 		if label:IsA("TextLabel") then
-			label.Text = icon
+			label.Text = resolved
 			label.TextTransparency = 0
 		end
 	end
@@ -1713,7 +1723,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				});
 			end;
 
-			LoadText()
+			LoadText()rIcon
 
 			Config.Callback(Config.Default);
 		end;
@@ -1752,11 +1762,11 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		Icon.Size = UDim2.new(1, 0, 1, 0)
 		Icon.ZIndex = ZINdex + 14
 		Icon.FontFace = NeverLose.BuiltInBold
-		Icon.Text = (GearIcon == 1 and 'gear') or (GearIcon == 2 and 'chevron-large-right') or "three-dots-horizontal";
 		Icon.TextColor3 = Color3.fromRGB(223, 223, 223)
 		Icon.TextSize = 16.000
 		Icon.TextTransparency = 0.400
 		Icon.TextWrapped = true
+		NeverLose:SetIconTarget(Icon, (GearIcon == 1 and 'gear') or (GearIcon == 2 and 'chevron-large-right') or "three-dots-horizontal", Color3.fromRGB(223, 223, 223))
 
 		UICorner.CornerRadius = UDim.new(0, 4)
 		UICorner.Parent = Option
@@ -2424,11 +2434,11 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			DropdownSearchIcon.Size = UDim2.new(0, 14, 0, 14)
 			DropdownSearchIcon.ZIndex = ZINdex + 129
 			DropdownSearchIcon.FontFace = NeverLose.BuiltInBold
-			DropdownSearchIcon.Text = "magnifying-glass"
 			DropdownSearchIcon.TextColor3 = Color3.fromRGB(223, 223, 223)
 			DropdownSearchIcon.TextSize = 12
 			DropdownSearchIcon.TextTransparency = 0.5
 			DropdownSearchIcon.TextWrapped = true
+			NeverLose:SetIconTarget(DropdownSearchIcon, "magnifying-glass", Color3.fromRGB(223, 223, 223))
 
 			DropdownSearchCorner.CornerRadius = UDim.new(0, 4)
 			DropdownSearchCorner.Parent = DropdownSearchBox
@@ -3984,11 +3994,11 @@ function NeverLose:CreateWindow(Config)
 	ConfigIcon.Size = UDim2.new(0, 25, 0, 25)
 	ConfigIcon.ZIndex = 9
 	ConfigIcon.FontFace = NeverLose.BuiltInBold
-	ConfigIcon.Text = "pencil-square"
 	ConfigIcon.TextColor3 = Color3.fromRGB(223, 223, 223)
 	ConfigIcon.TextSize = 16.000
 	ConfigIcon.TextTransparency = 0.250
 	ConfigIcon.TextWrapped = true
+	NeverLose:SetIconTarget(ConfigIcon, "pencil-square", Color3.fromRGB(223, 223, 223))
 
 	LineFrame_4.Name = NeverLose.RandomString();
 	LineFrame_4.Parent = ConfigFrame
@@ -5562,11 +5572,11 @@ function NeverLose:CreateWindow(Config)
 			Icon.Size = UDim2.new(0, 20, 0, 20)
 			Icon.ZIndex = 17
 			Icon.FontFace = NeverLose.BuiltInBold;
-			Icon.Text = IconStr
 			Icon.TextColor3 = NeverLose.AccentColor
 			Icon.TextSize = 18.000
 			Icon.TextTransparency = 0.250
 			Icon.TextWrapped = true
+			NeverLose:SetIconTarget(Icon, IconStr, NeverLose.AccentColor)
 
 			InnerBlock.Update = LPH_NO_VIRTUALIZE(function(value)
 				local size = TextService:GetTextSize(Content.Text , Content.TextSize,Content.Font,Vector2.new(math.huge,math.huge))
@@ -5922,11 +5932,11 @@ function NeverLose:CreateLogger()
 		Icon.Size = UDim2.new(0, 15, 0, 15)
 		Icon.ZIndex = 133
 		Icon.FontFace = NeverLose.BuiltInBold
-		Icon.Text = IconStr
 		Icon.TextColor3 = Color3.fromRGB(223, 223, 223)
 		Icon.TextSize = 13.000
 		Icon.TextTransparency = 1--0.250
 		Icon.TextWrapped = true
+		NeverLose:SetIconTarget(Icon, IconStr, Color3.fromRGB(223, 223, 223))
 
 		local size = TextService:GetTextSize(LogContent.Text,LogContent.TextSize,LogContent.Font,Vector2.new(math.huge,math.huge));
 
