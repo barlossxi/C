@@ -4180,12 +4180,12 @@ function NeverLose:CreateWindow(Config)
 
 	LogoImage.Name = NeverLose.RandomString();
 	LogoImage.Parent = HeadFrame
-	LogoImage.AnchorPoint = Vector2.new(0, 0.5)
+	LogoImage.AnchorPoint = Vector2.new(0.5, 0.5)
 	LogoImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	LogoImage.BackgroundTransparency = 1.000
 	LogoImage.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	LogoImage.BorderSizePixel = 0
-	LogoImage.Position = UDim2.new(0, 4, 0.5, 0)
+	LogoImage.Position = UDim2.new(0, 27, 0.5, 0)
 	LogoImage.Size = UDim2.new(0, 35, 0, 35)
 	LogoImage.ZIndex = 7
 	LogoImage.Image = Window.Logo
