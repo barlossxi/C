@@ -5386,11 +5386,7 @@ function NeverLose:CreateWindow(Config)
 		ConfigLib.SetRender(false);
 		ConfigSignal:Connect(ConfigLib.SetRender);
 		ConfigLib.UnsafeThread = nil;
-		ConfigLib.DefaultConfig = "Default";
-		ConfigLib.DefaultCreatedThisSession = false;
-		ConfigLib.AutoLoaded = false;
-		ConfigLib.SelectedConfig = ConfigLib.DefaultConfig;
-		ConfigLib.UserSelectedPath = Window.ConfigFolder..'/.selected_'..tostring(LocalPlayer.UserId);
+		ConfigLib.SelectedConfig = "Default";
 
 		local UpdateSize = LPH_NO_VIRTUALIZE(function()
 			local size = TextService:GetTextSize(ConfigName.Text , ConfigName.TextSize,ConfigName.Font,Vector2.new(math.huge,math.huge));
@@ -5426,218 +5422,24 @@ function NeverLose:CreateWindow(Config)
 			return NeverLose.Base64Encode(Encryption.new(HttpService:JSONEncode(ikc)));
 		end;
 
-		function ConfigLib:ApplyFlagValue(idx , value)
-			local flag = NeverLose.Flags[idx];
-
-			if not flag or not flag.SetValue then
-				return false;
-			end;
-
-			if flag.GetValue then
-				local ok,current = pcall(function()
-					return flag:GetValue();
-				end);
-
-				if ok then
-					local currentType = typeof(current);
-					local valueType = typeof(value);
-
-					if currentType == 'Color3' and valueType == 'string' then
-						local okColor,color = pcall(function()
-							return Color3.fromHex(value:gsub('#',''));
-						end);
-
-						if okColor then
-							value = color;
-						end;
-					elseif currentType == 'number' and valueType == 'string' and tonumber(value) then
-						value = tonumber(value);
-					elseif currentType == 'boolean' and valueType ~= 'boolean' then
-						value = value == true or value == 'true';
-					end;
-				end;
-			end;
-
-			local success,message = pcall(function()
-				flag:SetValue(value);
-			end);
-
-			if not success then
-				warn('[NeverLose Config] Failed to load '..tostring(idx)..': '..tostring(message));
-			end;
-
-			return true;
-		end;
-
 		function ConfigLib:LoadData(data)
-			local success , coded = pcall(function()
-				return HttpService:JSONDecode(Encryption.reverse(NeverLose.Base64Decode(data)));
-			end);
-
-			if not success or typeof(coded) ~= 'table' then
-				return false;
-			end;
-
-			local pending = {};
+			local coded = HttpService:JSONDecode(Encryption.reverse(NeverLose.Base64Decode(data)));
 
 			for i,v in next , coded do
 				if v.Idx then
-					if not ConfigLib:ApplyFlagValue(v.Idx , v.Value) then
-						pending[v.Idx] = v.Value;
+					if NeverLose.Flags[v.Idx] then
+						task.spawn(function()
+							NeverLose.Flags[v.Idx]:SetValue(v.Value)
+						end)
 					end;
 				end;
 			end;
-
-			if next(pending) then
-				local startTick = tick();
-
-				task.spawn(function()
-					while next(pending) and tick() - startTick < 10 do
-						for idx,value in next , pending do
-							if ConfigLib:ApplyFlagValue(idx , value) then
-								pending[idx] = nil;
-							end;
-						end;
-
-						if next(pending) then
-							task.wait(0.1);
-						end;
-					end;
-
-					table.clear(pending);
-				end);
-			end;
-
-			return true;
-		end;
-
-		function ConfigLib:GetConfigPath(name)
-			return Window.ConfigFolder..'/'..tostring(name or ConfigLib.DefaultConfig);
-		end;
-
-		function ConfigLib:EnsureFolder()
-			if not isfolder(Window.ConfigFolder) then
-				makefolder(Window.ConfigFolder);
-			end;
-		end;
-
-		function ConfigLib:EnsureDefault()
-			ConfigLib:EnsureFolder();
-
-			local defaultPath = ConfigLib:GetConfigPath(ConfigLib.DefaultConfig);
-			if not isfile(defaultPath) then
-				writefile(defaultPath,ConfigLib:GetData());
-				ConfigLib.DefaultCreatedThisSession = true;
-			end;
-		end;
-
-		function ConfigLib:SaveDefaultIfNew()
-			if ConfigLib.DefaultCreatedThisSession then
-				writefile(ConfigLib:GetConfigPath(ConfigLib.DefaultConfig),ConfigLib:GetData());
-				ConfigLib.DefaultCreatedThisSession = false;
-			end;
-		end;
-
-		function ConfigLib:GetSavedSelection()
-			if isfile(ConfigLib.UserSelectedPath) then
-				local selected = tostring(readfile(ConfigLib.UserSelectedPath)):gsub('^%s+',''):gsub('%s+$','');
-
-				if selected and selected:byte() and isfile(ConfigLib:GetConfigPath(selected)) then
-					return selected;
-				end;
-			end;
-
-			return ConfigLib.DefaultConfig;
-		end;
-
-		function ConfigLib:SetSelectedConfig(name , saveForUser)
-			ConfigLib.SelectedConfig = tostring(name or ConfigLib.DefaultConfig);
-			ConfigName.Text = ConfigLib.SelectedConfig;
-
-			if saveForUser then
-				writefile(ConfigLib.UserSelectedPath,ConfigLib.SelectedConfig);
-			end;
-
-			UpdateSize();
-		end;
-
-		function ConfigLib:LoadConfig(name , saveForUser)
-			local configName = tostring(name or ConfigLib.DefaultConfig);
-			local path = ConfigLib:GetConfigPath(configName);
-
-			if not isfile(path) then
-				configName = ConfigLib.DefaultConfig;
-				path = ConfigLib:GetConfigPath(configName);
-			end;
-
-			if isfile(path) then
-				local loaded = ConfigLib:LoadData(readfile(path));
-				ConfigLib:SetSelectedConfig(configName , saveForUser);
-
-				return loaded;
-			end;
-
-			return false;
-		end;
-
-		function ConfigLib:GetFlagCount()
-			local count = 0;
-
-			for i,v in next , NeverLose.Flags do
-				if v and v.SetValue and v.GetValue then
-					count += 1;
-				end;
-			end;
-
-			return count;
-		end;
-
-		function ConfigLib:AutoLoad(SkipWait)
-			if ConfigLib.AutoLoaded then
-				return;
-			end;
-
-			ConfigLib.AutoLoaded = true;
-
-			if SkipWait then
-				ConfigLib:EnsureDefault();
-				ConfigLib:SaveDefaultIfNew();
-				local loaded = ConfigLib:LoadConfig(ConfigLib:GetSavedSelection() , false);
-				ConfigLib:RefreshConfig();
-
-				return loaded;
-			end;
-
-			task.spawn(function()
-				ConfigLib:EnsureDefault();
-
-				if not SkipWait then
-					local lastCount = -1;
-					local stableTick = tick();
-					local startTick = tick();
-
-					while tick() - startTick < 10 do
-						local count = ConfigLib:GetFlagCount();
-
-						if count ~= lastCount then
-							lastCount = count;
-							stableTick = tick();
-						elseif count > 0 and tick() - stableTick >= 0.75 then
-							break;
-						end;
-
-						task.wait(0.1);
-					end;
-				end;
-
-				ConfigLib:SaveDefaultIfNew();
-				ConfigLib:LoadConfig(ConfigLib:GetSavedSelection() , false);
-				ConfigLib:RefreshConfig();
-			end);
 		end;
 
 		function ConfigLib:RefreshConfig()
-			ConfigLib:EnsureDefault();
+			if not isfolder(Window.ConfigFolder) then
+				makefolder(Window.ConfigFolder);
+			end;
 
 			for i,v in next,ConfigMenu:GetChildren() do
 				if v:GetAttribute('ConfigItem') then
@@ -5656,9 +5458,7 @@ function NeverLose:CreateWindow(Config)
 
 				local name = string.sub(v , #Window.ConfigFolder + 2);
 
-				if string.sub(name,1,10) ~= '.selected_' then
-					table.insert(ConfigList , name)
-				end;
+				table.insert(ConfigList , name)
 			end;
 
 			for i,ConfigNameStr in next , ConfigList do
@@ -5845,16 +5645,7 @@ function NeverLose:CreateWindow(Config)
 				end)));
 
 				local deleter,signal = NeverLose:CreateInput(DeleteConfig,function()
-					if ConfigNameStr == ConfigLib.DefaultConfig then
-						Logging.new("folder",'Default config cannot be deleted',3.5)
-						return;
-					end;
-
 					delfile(Window.ConfigFolder..'/'..ConfigNameStr);
-
-					if ConfigLib.SelectedConfig == ConfigNameStr then
-						ConfigLib:LoadConfig(ConfigLib.DefaultConfig , true);
-					end;
 
 					UpdateSize();
 
@@ -5865,7 +5656,17 @@ function NeverLose:CreateWindow(Config)
 
 
 				local _,load_signal = NeverLose:CreateInput(LoadConfig,function()
-					if ConfigLib:LoadConfig(ConfigNameStr , true) then
+					local path = Window.ConfigFolder..'/'..ConfigNameStr;
+
+					if isfile(path) then
+						local data = readfile(path);
+
+						ConfigLib:LoadData(data);
+
+						ConfigLib.SelectedConfig = ConfigNameStr;
+						ConfigName.Text = ConfigNameStr;
+
+						UpdateSize();
 
 						ConfigLib:RefreshConfig();
 
@@ -5909,12 +5710,10 @@ function NeverLose:CreateWindow(Config)
 		end;
 
 		local hover_write = NeverLose:CreateInput(ConfigIcon,function()
-			ConfigLib:EnsureDefault();
-
-			local path = ConfigLib:GetConfigPath(ConfigLib.SelectedConfig or ConfigLib.DefaultConfig);
+			local path = Window.ConfigFolder..'/'..(ConfigLib.SelectedConfig or "Default");
 
 			if isfile(path) then
-				writefile(path,ConfigLib:GetData());
+				writefile(Window.ConfigFolder..'/'..(ConfigLib.SelectedConfig or "Default"),ConfigLib:GetData());
 
 				Logging.new("folder",'Saved '..tostring(ConfigLib.SelectedConfig),3.5)
 			end;
@@ -5936,15 +5735,18 @@ function NeverLose:CreateWindow(Config)
 		local mv = NeverLose:CreateInput(LoadConfig , function()
 			local cfg_name = TextBox.Text;
 
-			if cfg_name and cfg_name:byte() and string.sub(cfg_name,1,10) ~= '.selected_' and not cfg_name:find('/',1,true) and not cfg_name:find('\\',1,true) then
+			if cfg_name and cfg_name:byte() and not cfg_name:find('/',1,true) and not cfg_name:find('\\',1,true) then
 				cfg_name = string.sub(cfg_name , 1 , 24);
 
-				writefile(ConfigLib:GetConfigPath(cfg_name),ConfigLib:GetData());
-				ConfigLib:SetSelectedConfig(cfg_name , true);
+				writefile(Window.ConfigFolder..'/'..cfg_name,ConfigLib:GetData());
+				ConfigLib.SelectedConfig = cfg_name;
+				ConfigName.Text = cfg_name;
 
 				Logging.new("folder",'Created '..tostring(cfg_name),3.5)
 
 				TextBox.Text = "";
+
+				UpdateSize();
 
 				ConfigLib:RefreshConfig();
 			end;
@@ -5989,13 +5791,7 @@ function NeverLose:CreateWindow(Config)
 		return ConfigLib;
 	end;
 
-	Window.ConfigLib = Window:_InitConfig();
-
-	function Window:AutoLoadConfig()
-		if Window.ConfigLib then
-			Window.ConfigLib:AutoLoad(true);
-		end;
-	end;
+	Window:_InitConfig();
 
 	local UserSettings = NeverLose:CreateOptionWindow(BottomFrame , BottomFrame.ZIndex + 13);
 	local reciveSignal;
