@@ -587,6 +587,17 @@ function Loader:AddConfigControls(where, logger)
         end,
     })
 
+    local function RefreshSaveDropdown(nextSelected)
+        nextSelected = SanitizeConfigName(nextSelected or State.SelectedConfig)
+        dropdown:SetValues(Loader:GetConfigList())
+        dropdown:SetValue(nextSelected)
+
+        task.defer(function()
+            dropdown:SetValues(Loader:GetConfigList())
+            dropdown:SetValue(nextSelected)
+        end)
+    end
+
     local nameInput = where:AddLabel("Config Name"):AddTextInput({
         Placeholder = "Config Name",
         Default = "",
@@ -612,8 +623,7 @@ function Loader:AddConfigControls(where, logger)
             createName = SanitizeConfigName(rawName)
             selectedName = createName
             Loader:SaveConfig(selectedName)
-            dropdown:SetValues(Loader:GetConfigList())
-            dropdown:SetValue(selectedName)
+            RefreshSaveDropdown(selectedName)
             nameInput:SetValue("")
 
             if logger then
@@ -636,8 +646,7 @@ function Loader:AddConfigControls(where, logger)
                 return
             end
 
-            dropdown:SetValues(Loader:GetConfigList())
-            dropdown:SetValue(State.SelectedConfig)
+            RefreshSaveDropdown(State.SelectedConfig)
 
             if logger then
                 logger.new("trash-can", "Deleted " .. selectedName, 3.5)
