@@ -135,7 +135,7 @@ local function SanitizeConfigName(configName)
     configName = tostring(configName or State.DefaultConfigName or "Default")
     configName = configName:gsub("[/\\]", ""):sub(1, 48)
 
-    if configName == "" or configName == State.SelectionFile then
+    if configName == "" or configName == State.SelectionFile or (configName .. ".json") == State.SelectionFile then
         configName = State.DefaultConfigName or "Default"
     end
 
@@ -547,8 +547,29 @@ function Loader:LoadConfig(configName)
     return loaded
 end
 
+function Loader:DeleteConfig(configName)
+    configName = SanitizeConfigName(configName or State.SelectedConfig)
+
+    if configName == State.DefaultConfigName or not FileSystemSupported() or not delfile then
+        return false
+    end
+
+    local path = GetConfigPath(configName)
+    if isfile(path) then
+        delfile(path)
+    end
+
+    State.SelectedConfig = State.DefaultConfigName
+    SaveSelectedConfigForUser()
+    LoadConfigData(State.SelectedConfig)
+    ApplyConfigToControls()
+
+    return true
+end
+
 function Loader:AddConfigControls(where, logger)
     local selectedName = State.SelectedConfig
+    local createName = ""
 
     SaveConfigNow()
 
@@ -566,32 +587,67 @@ function Loader:AddConfigControls(where, logger)
         end,
     })
 
+    local nameInput = where:AddLabel("Config Name"):AddTextInput({
+        Placeholder = "Config Name",
+        Default = "",
+        Size = 100,
+        Callback = function(value)
+            createName = SanitizeConfigName(value)
+        end,
+    })
+
     where:AddButton({
-        Icon = "folder",
-        Name = "Save Config",
+        Icon = "plus-large",
+        Name = "Create Config",
         Callback = function()
-            selectedName = SanitizeConfigName(dropdown:GetValue() or selectedName)
+            local rawName = tostring(nameInput:GetValue() or createName or "")
+            if rawName:gsub("%s+", "") == "" then
+                if logger then
+                    logger.new("folder", "Enter config name", 3.5)
+                end
+
+                return
+            end
+
+            createName = SanitizeConfigName(rawName)
+            selectedName = createName
             Loader:SaveConfig(selectedName)
             dropdown:SetValues(Loader:GetConfigList())
             dropdown:SetValue(selectedName)
+            nameInput:SetValue("")
 
             if logger then
-                logger.new("folder", "Saved " .. selectedName, 3.5)
+                logger.new("folder", "Created " .. selectedName, 3.5)
             end
         end,
     })
 
     where:AddButton({
-        Icon = "reload",
-        Name = "Refresh Save",
+        Icon = "trash-can",
+        Name = "Delete Config",
         Callback = function()
+            selectedName = SanitizeConfigName(dropdown:GetValue() or selectedName)
+
+            if not Loader:DeleteConfig(selectedName) then
+                if logger then
+                    logger.new("trash-can", "Cannot delete " .. selectedName, 3.5)
+                end
+
+                return
+            end
+
             dropdown:SetValues(Loader:GetConfigList())
             dropdown:SetValue(State.SelectedConfig)
+
+            if logger then
+                logger.new("trash-can", "Deleted " .. selectedName, 3.5)
+            end
         end,
     })
 
     return {
         Dropdown = dropdown,
+        NameInput = nameInput,
     }
 end
 
