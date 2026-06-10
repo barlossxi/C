@@ -5388,6 +5388,7 @@ function NeverLose:CreateWindow(Config)
 		ConfigLib.UnsafeThread = nil;
 		ConfigLib.DefaultConfig = "Default";
 		ConfigLib.DefaultCreatedThisSession = false;
+		ConfigLib.AutoLoaded = false;
 		ConfigLib.SelectedConfig = ConfigLib.DefaultConfig;
 		ConfigLib.UserSelectedPath = Window.ConfigFolder..'/.selected_'..tostring(LocalPlayer.UserId);
 
@@ -5434,15 +5435,37 @@ function NeverLose:CreateWindow(Config)
 				return false;
 			end;
 
-			for i,v in next , coded do
-				if v.Idx then
-					if NeverLose.Flags[v.Idx] then
-						task.spawn(function()
-							NeverLose.Flags[v.Idx]:SetValue(v.Value)
-						end)
+			task.spawn(function()
+				local pending = {};
+
+				for i,v in next , coded do
+					if v.Idx then
+						pending[v.Idx] = v.Value;
 					end;
 				end;
-			end;
+
+				local startTick = tick();
+
+				while next(pending) and tick() - startTick < 10 do
+					for idx,value in next , pending do
+						local flag = NeverLose.Flags[idx];
+
+						if flag and flag.SetValue then
+							pcall(function()
+								flag:SetValue(value);
+							end);
+
+							pending[idx] = nil;
+						end;
+					end;
+
+					if next(pending) then
+						task.wait(0.1);
+					end;
+				end;
+
+				table.clear(pending);
+			end);
 
 			return true;
 		end;
@@ -5507,13 +5530,69 @@ function NeverLose:CreateWindow(Config)
 			end;
 
 			if isfile(path) then
-				ConfigLib:LoadData(readfile(path));
+				local loaded = ConfigLib:LoadData(readfile(path));
 				ConfigLib:SetSelectedConfig(configName , saveForUser);
 
-				return true;
+				return loaded;
 			end;
 
 			return false;
+		end;
+
+		function ConfigLib:GetFlagCount()
+			local count = 0;
+
+			for i,v in next , NeverLose.Flags do
+				if v and v.SetValue and v.GetValue then
+					count += 1;
+				end;
+			end;
+
+			return count;
+		end;
+
+		function ConfigLib:AutoLoad(SkipWait)
+			if ConfigLib.AutoLoaded then
+				return;
+			end;
+
+			ConfigLib.AutoLoaded = true;
+
+			if SkipWait then
+				ConfigLib:EnsureDefault();
+				ConfigLib:SaveDefaultIfNew();
+				local loaded = ConfigLib:LoadConfig(ConfigLib:GetSavedSelection() , false);
+				ConfigLib:RefreshConfig();
+
+				return loaded;
+			end;
+
+			task.spawn(function()
+				ConfigLib:EnsureDefault();
+
+				if not SkipWait then
+					local lastCount = -1;
+					local stableTick = tick();
+					local startTick = tick();
+
+					while tick() - startTick < 10 do
+						local count = ConfigLib:GetFlagCount();
+
+						if count ~= lastCount then
+							lastCount = count;
+							stableTick = tick();
+						elseif count > 0 and tick() - stableTick >= 0.75 then
+							break;
+						end;
+
+						task.wait(0.1);
+					end;
+				end;
+
+				ConfigLib:SaveDefaultIfNew();
+				ConfigLib:LoadConfig(ConfigLib:GetSavedSelection() , false);
+				ConfigLib:RefreshConfig();
+			end);
 		end;
 
 		function ConfigLib:RefreshConfig()
@@ -5844,13 +5923,6 @@ function NeverLose:CreateWindow(Config)
 
 		ConfigLib:RefreshConfig();
 
-		task.defer(function()
-			ConfigLib:EnsureDefault();
-			ConfigLib:SaveDefaultIfNew();
-			ConfigLib:LoadConfig(ConfigLib:GetSavedSelection() , false);
-			ConfigLib:RefreshConfig();
-		end);
-
 		OpenButton.MouseButton1Click:Connect(LPH_NO_VIRTUALIZE(function()
 			if ConfigLib.UnsafeThread then
 				ConfigLib.UnsafeThread:Disconnect();
@@ -5876,7 +5948,13 @@ function NeverLose:CreateWindow(Config)
 		return ConfigLib;
 	end;
 
-	Window:_InitConfig();
+	Window.ConfigLib = Window:_InitConfig();
+
+	function Window:AutoLoadConfig()
+		if Window.ConfigLib then
+			Window.ConfigLib:AutoLoad(true);
+		end;
+	end;
 
 	local UserSettings = NeverLose:CreateOptionWindow(BottomFrame , BottomFrame.ZIndex + 13);
 	local reciveSignal;
