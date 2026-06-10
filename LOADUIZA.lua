@@ -5,6 +5,11 @@ local DEFAULTS = {
     ExFunction = nil,
     ExportGlobals = true,
     AntiAfk = true,
+    AutoLoadConfig = true,
+    AutoSaveConfig = true,
+    ConfigFolder = nil,
+    DefaultConfigName = "Default",
+    SelectedConfig = nil,
 }
 
 local State = {
@@ -12,6 +17,14 @@ local State = {
     Config = {},
     ExFunction = {},
     Threads = {},
+    Controls = {},
+    ConfigFolder = nil,
+    DefaultConfigName = "Default",
+    SelectedConfig = "Default",
+    SelectionFile = "__selected_config.json",
+    AutoSaveConfig = true,
+    SaveQueue = 0,
+    LoadingConfig = false,
 }
 
 local function Merge(defaults, options)
@@ -70,6 +83,297 @@ local function ToDropdownDefault(value, values)
     return default
 end
 
+local function FileSystemSupported()
+    return readfile and writefile and isfile and isfolder and makefolder
+end
+
+local function NormalizePath(path)
+    local normalized = tostring(path or ""):gsub("\\", "/")
+    normalized = normalized:gsub("/+$", "")
+    return normalized
+end
+
+local function JoinPath(...)
+    local parts = {}
+
+    for _, part in ipairs({ ... }) do
+        part = NormalizePath(part)
+        if part ~= "" then
+            table.insert(parts, part)
+        end
+    end
+
+    return table.concat(parts, "/")
+end
+
+local function EnsureFolder(path)
+    if not FileSystemSupported() then
+        return false
+    end
+
+    path = NormalizePath(path)
+    if path == "" then
+        return false
+    end
+
+    local current = ""
+    for folder in string.gmatch(path, "[^/]+") do
+        current = current == "" and folder or (current .. "/" .. folder)
+
+        if not isfolder(current) then
+            local ok = pcall(makefolder, current)
+            if not ok then
+                return false
+            end
+        end
+    end
+
+    return true
+end
+
+local function SanitizeConfigName(configName)
+    configName = tostring(configName or State.DefaultConfigName or "Default")
+    configName = configName:gsub("[/\\]", ""):sub(1, 48)
+
+    if configName == "" or configName == State.SelectionFile then
+        configName = State.DefaultConfigName or "Default"
+    end
+
+    return configName
+end
+
+local function GetHttpService()
+    return State.Service and State.Service.HttpService or game:GetService("HttpService")
+end
+
+local function GetConfigPath(configName)
+    return JoinPath(State.ConfigFolder, SanitizeConfigName(configName) .. ".json")
+end
+
+local function GetSelectionPath()
+    return JoinPath(State.ConfigFolder, State.SelectionFile)
+end
+
+local function EncodeValue(value)
+    local valueType = typeof(value)
+
+    if valueType == "Color3" then
+        return {
+            __type = "Color3",
+            R = value.R,
+            G = value.G,
+            B = value.B,
+        }
+    end
+
+    if valueType == "CFrame" then
+        local rx, ry, rz = value:ToOrientation()
+        return {
+            __type = "CFrame",
+            X = value.Position.X,
+            Y = value.Position.Y,
+            Z = value.Position.Z,
+            RX = rx,
+            RY = ry,
+            RZ = rz,
+        }
+    end
+
+    if valueType == "table" then
+        local encoded = {}
+
+        for key, item in pairs(value) do
+            if typeof(key) == "string" or typeof(key) == "number" then
+                encoded[key] = EncodeValue(item)
+            end
+        end
+
+        return encoded
+    end
+
+    if valueType == "string" or valueType == "number" or valueType == "boolean" then
+        return value
+    end
+
+    return nil
+end
+
+local function DecodeValue(value)
+    if typeof(value) ~= "table" then
+        return value
+    end
+
+    if value.__type == "Color3" then
+        return Color3.new(tonumber(value.R) or 0, tonumber(value.G) or 0, tonumber(value.B) or 0)
+    end
+
+    if value.__type == "CFrame" then
+        return CFrame.new(tonumber(value.X) or 0, tonumber(value.Y) or 0, tonumber(value.Z) or 0)
+            * CFrame.Angles(tonumber(value.RX) or 0, tonumber(value.RY) or 0, tonumber(value.RZ) or 0)
+    end
+
+    local decoded = {}
+    for key, item in pairs(value) do
+        decoded[key] = DecodeValue(item)
+    end
+
+    return decoded
+end
+
+local function GetSaveData()
+    local data = {}
+
+    for key, value in pairs(State.Config) do
+        data[key] = EncodeValue(value)
+    end
+
+    return data
+end
+
+local function ApplySaveData(data)
+    if typeof(data) ~= "table" then
+        return false
+    end
+
+    for key, value in pairs(data) do
+        State.Config[key] = DecodeValue(value)
+    end
+
+    return true
+end
+
+local function ReadUserSelections()
+    if not FileSystemSupported() or not EnsureFolder(State.ConfigFolder) then
+        return {}
+    end
+
+    local path = GetSelectionPath()
+    if not isfile(path) then
+        return {}
+    end
+
+    local ok, data = pcall(function()
+        return GetHttpService():JSONDecode(readfile(path))
+    end)
+
+    if ok and typeof(data) == "table" then
+        return data
+    end
+
+    return {}
+end
+
+local function SaveSelectedConfigForUser()
+    if not FileSystemSupported() or not EnsureFolder(State.ConfigFolder) then
+        return false
+    end
+
+    local selections = ReadUserSelections()
+    local userId = tostring(State.Service.Players.LocalPlayer.UserId)
+    selections[userId] = State.SelectedConfig
+
+    local ok, encoded = pcall(function()
+        return GetHttpService():JSONEncode(selections)
+    end)
+
+    if ok and encoded then
+        writefile(GetSelectionPath(), encoded)
+        return true
+    end
+
+    return false
+end
+
+local function GetSelectedConfigForUser()
+    local selections = ReadUserSelections()
+    local userId = tostring(State.Service.Players.LocalPlayer.UserId)
+    return selections[userId]
+end
+
+local function SaveConfigNow()
+    if not State.AutoSaveConfig or not FileSystemSupported() or not EnsureFolder(State.ConfigFolder) then
+        return false
+    end
+
+    local ok, encoded = pcall(function()
+        return GetHttpService():JSONEncode(GetSaveData())
+    end)
+
+    if not ok or not encoded then
+        return false
+    end
+
+    local path = GetConfigPath(State.SelectedConfig)
+    if not isfile(path) or readfile(path) ~= encoded then
+        writefile(path, encoded)
+    end
+
+    SaveSelectedConfigForUser()
+    return true
+end
+
+local function QueueSaveConfig()
+    if State.LoadingConfig or not State.AutoSaveConfig then
+        return
+    end
+
+    State.SaveQueue += 1
+    local queueId = State.SaveQueue
+
+    task.delay(0.35, function()
+        if State.SaveQueue == queueId then
+            SaveConfigNow()
+        end
+    end)
+end
+
+local function LoadConfigData(configName)
+    if not FileSystemSupported() or not EnsureFolder(State.ConfigFolder) then
+        warn("[Loader] Executor does not support config files")
+        return false
+    end
+
+    configName = SanitizeConfigName(configName)
+    State.SelectedConfig = configName
+    SaveSelectedConfigForUser()
+
+    local path = GetConfigPath(configName)
+    if not isfile(path) then
+        return false
+    end
+
+    local ok, data = pcall(function()
+        return GetHttpService():JSONDecode(readfile(path))
+    end)
+
+    if not ok or typeof(data) ~= "table" then
+        warn("[Loader] Failed to load config:", configName)
+        return false
+    end
+
+    State.LoadingConfig = true
+    ApplySaveData(data)
+    State.LoadingConfig = false
+
+    return true
+end
+
+local function ApplyConfigToControls()
+    State.LoadingConfig = true
+
+    for flagName, value in pairs(State.Config) do
+        local control = State.Controls[flagName]
+        if control and control.SetValue then
+            SafeCall(function()
+                control:SetValue(value)
+            end)
+        end
+    end
+
+    State.LoadingConfig = false
+    QueueSaveConfig()
+end
+
 local function EnsureReady()
     if State.Ready then
         return
@@ -124,6 +428,14 @@ function Loader:Init(options)
     State.Config = config.Config or State.Config or {}
     State.ExFunction = config.ExFunction or State.ExFunction or {}
     State.AntiAfk = config.AntiAfk
+    State.ConfigFolder = config.ConfigFolder or State.ConfigFolder or ("ZaHub/" .. tostring(game.GameId) .. "/Loader")
+    State.DefaultConfigName = SanitizeConfigName(config.DefaultConfigName or State.DefaultConfigName)
+    State.SelectedConfig = SanitizeConfigName(config.SelectedConfig or GetSelectedConfigForUser() or State.DefaultConfigName)
+    State.AutoSaveConfig = config.AutoSaveConfig ~= false
+
+    if config.AutoLoadConfig ~= false then
+        LoadConfigData(State.SelectedConfig)
+    end
 
     if State.AntiAfk and not State.AntiAfkThread then
         State.AntiAfkThread = task.spawn(function()
@@ -171,6 +483,15 @@ function Loader:Init(options)
         getgenv().AddKeybind = function(...)
             return Loader:AddKeybind(...)
         end
+        getgenv().SaveLoaderConfig = function(...)
+            return Loader:SaveConfig(...)
+        end
+        getgenv().LoadLoaderConfig = function(...)
+            return Loader:LoadConfig(...)
+        end
+        getgenv().GetLoaderConfigs = function(...)
+            return Loader:GetConfigList(...)
+        end
     end
 
     return Loader
@@ -178,6 +499,100 @@ end
 
 function Loader:GetConfig()
     return State.Config
+end
+
+function Loader:GetSelectedConfig()
+    return State.SelectedConfig
+end
+
+function Loader:GetConfigList()
+    local configs = {
+        State.DefaultConfigName,
+    }
+    local seen = {
+        [State.DefaultConfigName] = true,
+    }
+
+    if not FileSystemSupported() or not EnsureFolder(State.ConfigFolder) or not listfiles then
+        return configs
+    end
+
+    for _, path in ipairs(listfiles(State.ConfigFolder)) do
+        local fileName = NormalizePath(path):match("[^/]+$")
+
+        if fileName and fileName ~= State.SelectionFile and fileName:sub(-5) == ".json" then
+            local configName = fileName:sub(1, -6)
+            if not seen[configName] then
+                seen[configName] = true
+                table.insert(configs, configName)
+            end
+        end
+    end
+
+    table.sort(configs)
+    return configs
+end
+
+function Loader:SaveConfig(configName)
+    if configName then
+        State.SelectedConfig = SanitizeConfigName(configName)
+    end
+
+    return SaveConfigNow()
+end
+
+function Loader:LoadConfig(configName)
+    local loaded = LoadConfigData(configName or State.SelectedConfig)
+    ApplyConfigToControls()
+    return loaded
+end
+
+function Loader:AddConfigControls(where, logger)
+    local selectedName = State.SelectedConfig
+
+    SaveConfigNow()
+
+    local dropdown = where:AddLabel("Select Save"):AddDropdown({
+        Values = Loader:GetConfigList(),
+        Default = selectedName,
+        Flag = "__Loader Selected Save",
+        Callback = function(value)
+            selectedName = SanitizeConfigName(value)
+            Loader:LoadConfig(selectedName)
+
+            if logger then
+                logger.new("folder", "Loaded " .. selectedName, 3.5)
+            end
+        end,
+    })
+
+    where:AddButton({
+        Icon = "folder",
+        Name = "Save Config",
+        Callback = function()
+            selectedName = SanitizeConfigName(dropdown:GetValue() or selectedName)
+            Loader:SaveConfig(selectedName)
+            dropdown:SetValues(Loader:GetConfigList())
+            dropdown:SetValue(selectedName)
+
+            if logger then
+                logger.new("folder", "Saved " .. selectedName, 3.5)
+            end
+        end,
+    })
+
+    where:AddButton({
+        Icon = "reload",
+        Name = "Refresh Save",
+        Callback = function()
+            dropdown:SetValues(Loader:GetConfigList())
+            dropdown:SetValue(State.SelectedConfig)
+        end,
+    })
+
+    return {
+        Dropdown = dropdown,
+    }
 end
 
 function Loader:GetService()
@@ -195,6 +610,8 @@ function Loader:AddToggle(where, text, callback)
         else
             StopLoop(text)
         end
+
+        QueueSaveConfig()
     end
 
     local toggle = where:AddLabel(text):AddToggle({
@@ -203,11 +620,14 @@ function Loader:AddToggle(where, text, callback)
         Callback = OnChanged,
     })
 
+    State.Controls[text] = toggle
     State.Config[text] = toggle:GetValue()
 
     if State.Config[text] then
         StartLoop(text)
     end
+
+    QueueSaveConfig()
 
     return toggle
 end
@@ -232,11 +652,14 @@ function Loader:AddSlider(where, text, data)
         Callback = function(v)
             State.Config[text] = v
             SafeCall(data.Callback, v)
+            QueueSaveConfig()
         end,
     })
 
+    State.Controls[text] = slider
     State.Config[text] = slider:GetValue()
     SafeCall(data.Callback, State.Config[text])
+    QueueSaveConfig()
 
     return slider
 end
@@ -266,11 +689,14 @@ function Loader:AddDropdown(where, text, data)
 
             State.Config[text] = value
             SafeCall(data.Callback, value)
+            QueueSaveConfig()
         end,
     })
 
+    State.Controls[text] = dropdown
     State.Config[text] = data.Multi and ToArray(dropdown:GetValue()) or dropdown:GetValue()
     SafeCall(data.Callback, State.Config[text])
+    QueueSaveConfig()
 
     return dropdown
 end
@@ -292,11 +718,14 @@ function Loader:AddTextbox(where, text, data)
         Callback = function(v)
             State.Config[text] = v
             SafeCall(data.Callback, v)
+            QueueSaveConfig()
         end,
     })
 
+    State.Controls[text] = textbox
     State.Config[text] = textbox:GetValue()
     SafeCall(data.Callback, State.Config[text])
+    QueueSaveConfig()
 
     return textbox
 end
@@ -315,11 +744,14 @@ function Loader:AddKeybind(where, text, data)
         Callback = function(v)
             State.Config[text] = v
             SafeCall(data.Callback, v)
+            QueueSaveConfig()
         end,
     })
 
+    State.Controls[text] = keybind
     State.Config[text] = keybind:GetValue()
     SafeCall(data.Callback, State.Config[text])
+    QueueSaveConfig()
 
     return keybind
 end
