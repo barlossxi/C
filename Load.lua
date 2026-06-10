@@ -5426,6 +5426,49 @@ function NeverLose:CreateWindow(Config)
 			return NeverLose.Base64Encode(Encryption.new(HttpService:JSONEncode(ikc)));
 		end;
 
+		function ConfigLib:ApplyFlagValue(idx , value)
+			local flag = NeverLose.Flags[idx];
+
+			if not flag or not flag.SetValue then
+				return false;
+			end;
+
+			if flag.GetValue then
+				local ok,current = pcall(function()
+					return flag:GetValue();
+				end);
+
+				if ok then
+					local currentType = typeof(current);
+					local valueType = typeof(value);
+
+					if currentType == 'Color3' and valueType == 'string' then
+						local okColor,color = pcall(function()
+							return Color3.fromHex(value:gsub('#',''));
+						end);
+
+						if okColor then
+							value = color;
+						end;
+					elseif currentType == 'number' and valueType == 'string' and tonumber(value) then
+						value = tonumber(value);
+					elseif currentType == 'boolean' and valueType ~= 'boolean' then
+						value = value == true or value == 'true';
+					end;
+				end;
+			end;
+
+			local success,message = pcall(function()
+				flag:SetValue(value);
+			end);
+
+			if not success then
+				warn('[NeverLose Config] Failed to load '..tostring(idx)..': '..tostring(message));
+			end;
+
+			return true;
+		end;
+
 		function ConfigLib:LoadData(data)
 			local success , coded = pcall(function()
 				return HttpService:JSONDecode(Encryption.reverse(NeverLose.Base64Decode(data)));
@@ -5435,37 +5478,35 @@ function NeverLose:CreateWindow(Config)
 				return false;
 			end;
 
-			task.spawn(function()
-				local pending = {};
+			local pending = {};
 
-				for i,v in next , coded do
-					if v.Idx then
+			for i,v in next , coded do
+				if v.Idx then
+					if not ConfigLib:ApplyFlagValue(v.Idx , v.Value) then
 						pending[v.Idx] = v.Value;
 					end;
 				end;
+			end;
 
+			if next(pending) then
 				local startTick = tick();
 
-				while next(pending) and tick() - startTick < 10 do
-					for idx,value in next , pending do
-						local flag = NeverLose.Flags[idx];
+				task.spawn(function()
+					while next(pending) and tick() - startTick < 10 do
+						for idx,value in next , pending do
+							if ConfigLib:ApplyFlagValue(idx , value) then
+								pending[idx] = nil;
+							end;
+						end;
 
-						if flag and flag.SetValue then
-							pcall(function()
-								flag:SetValue(value);
-							end);
-
-							pending[idx] = nil;
+						if next(pending) then
+							task.wait(0.1);
 						end;
 					end;
 
-					if next(pending) then
-						task.wait(0.1);
-					end;
-				end;
-
-				table.clear(pending);
-			end);
+					table.clear(pending);
+				end);
+			end;
 
 			return true;
 		end;
@@ -5499,7 +5540,7 @@ function NeverLose:CreateWindow(Config)
 
 		function ConfigLib:GetSavedSelection()
 			if isfile(ConfigLib.UserSelectedPath) then
-				local selected = readfile(ConfigLib.UserSelectedPath);
+				local selected = tostring(readfile(ConfigLib.UserSelectedPath)):gsub('^%s+',''):gsub('%s+$','');
 
 				if selected and selected:byte() and isfile(ConfigLib:GetConfigPath(selected)) then
 					return selected;
