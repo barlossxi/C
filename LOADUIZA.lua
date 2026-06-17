@@ -24,6 +24,7 @@ local State = {
     SelectionFile = "__selected_config.json",
     AutoSaveConfig = true,
     SaveQueue = 0,
+    SaveQueued = false,
     LoadingConfig = false,
 }
 
@@ -313,14 +314,16 @@ local function SaveConfigNow()
 end
 
 local function QueueSaveConfig()
-    if State.LoadingConfig or not State.AutoSaveConfig then
+    if State.LoadingConfig or not State.AutoSaveConfig or State.SaveQueued then
         return
     end
 
-    State.SaveQueue += 1
+    State.SaveQueued = true
+    State.SaveQueue = State.SaveQueue + 1
     local queueId = State.SaveQueue
 
     task.delay(0.35, function()
+        State.SaveQueued = false
         if State.SaveQueue == queueId then
             SaveConfigNow()
         end
