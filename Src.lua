@@ -237,10 +237,14 @@ function NeverLose:AddSignal(RBXSignal)
 end;
 
 function NeverLose:AddQuery(ItemRoot: Frame , Name : string)
-	table.insert(NeverLose.NameRegisitry , {
+	local Query = {
 		Root = ItemRoot,
 		Idx = Name,
-	});
+	};
+
+	table.insert(NeverLose.NameRegisitry , Query);
+
+	return Query;
 end;
 
 NeverLose.LoadIcon = LPH_NO_VIRTUALIZE(function()
@@ -3120,6 +3124,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				end
 			end
 			DropdownLib:Generate()
+			BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
 		end
 		if Config.Flag then
 			NeverLose.Flags[Config.Flag] = DropdownLib;
@@ -3380,7 +3385,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedFrame.Size = UDim2.new(1, 0, 0, 30) -- ความสูงเริ่มต้น
 		BasedFrame.ZIndex = LayerIndex + 8
 
-		NeverLose:AddQuery(BasedFrame, Name);
+		local Query = NeverLose:AddQuery(BasedFrame, Name);
 
 		BasedLabel.Name = NeverLose.RandomString();
 		BasedLabel.Parent = BasedFrame
@@ -3456,6 +3461,9 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 
 		function handle:SetText(t)
 			BasedLabel.Text = t
+			if Query then
+				Query.Idx = tostring(t)
+			end
 			if Warp then UpdateWarp() end
 		end;
 
@@ -3484,7 +3492,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		local UICorner = Instance.new("UICorner")
 		local Icon
 
-		NeverLose:AddQuery(ButtonFrame , Config.Name);
+		local Query = NeverLose:AddQuery(ButtonFrame , Config.Name);
 
 		ButtonFrame.Name = NeverLose.RandomString();
 		ButtonFrame.Parent = Frame
@@ -3565,6 +3573,9 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 
 		function Button:SetText(t)
 			BasedLabel.Text = t;
+			if Query then
+				Query.Idx = tostring(t)
+			end
 		end;
 
 		function Button:SetIcon(t)
@@ -4716,6 +4727,10 @@ function NeverLose:CreateWindow(Config)
 			end;
 		end));
 
+		function Tab:SetText(t)
+			TabContentLabel.Text = t;
+		end;
+
 		NeverLose:AddSignal(over.MouseEnter:Connect(LPH_NO_VIRTUALIZE(function()
 			if Window.Tabs[Window.CurrentTab] == Tab then
 				NeverLose.PlayAnimate(TabButton , SlowyTween , {
@@ -4873,6 +4888,10 @@ function NeverLose:CreateWindow(Config)
 
 			Section.SetRender(Tab.Signal:GetValue());
 			Tab.Signal:Connect(Section.SetRender);
+
+			function Section:SetText(t)
+				SectionLabel.Text = t;
+			end;
 
 			return Section;
 		end;
