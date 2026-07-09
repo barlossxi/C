@@ -51,6 +51,19 @@ local function SafeCall(callback, ...)
     end
 end
 
+local function AttachLabelSetter(control, label)
+    if not control or not label or not label.SetText then
+        return control
+    end
+
+    control.Label = label
+    control.SetText = function(_, value)
+        label:SetText(value)
+    end
+
+    return control
+end
+
 local function ToArray(value)
     local selected = {}
 
@@ -576,7 +589,8 @@ function Loader:AddConfigControls(where, logger)
 
     SaveConfigNow()
 
-    local dropdown = where:AddLabel("Select Save"):AddDropdown({
+    local dropdownLabel = where:AddLabel("Select Save")
+    local dropdown = dropdownLabel:AddDropdown({
         Values = Loader:GetConfigList(),
         Default = selectedName,
         Flag = "__Loader Selected Save",
@@ -589,6 +603,7 @@ function Loader:AddConfigControls(where, logger)
             end
         end,
     })
+    AttachLabelSetter(dropdown, dropdownLabel)
 
     local function RefreshSaveDropdown(nextSelected)
         nextSelected = SanitizeConfigName(nextSelected or State.SelectedConfig)
@@ -601,7 +616,8 @@ function Loader:AddConfigControls(where, logger)
         end)
     end
 
-    local nameInput = where:AddLabel("Config Name"):AddTextInput({
+    local nameInputLabel = where:AddLabel("Config Name")
+    local nameInput = nameInputLabel:AddTextInput({
         Placeholder = "Config Name",
         Default = "",
         Size = 100,
@@ -609,8 +625,9 @@ function Loader:AddConfigControls(where, logger)
             createName = SanitizeConfigName(value)
         end,
     })
+    AttachLabelSetter(nameInput, nameInputLabel)
 
-    where:AddButton({
+    local createButton = where:AddButton({
         Icon = "plus-large",
         Name = "Create Config",
         Callback = function()
@@ -635,7 +652,7 @@ function Loader:AddConfigControls(where, logger)
         end,
     })
 
-    where:AddButton({
+    local deleteButton = where:AddButton({
         Icon = "trash-can",
         Name = "Delete Config",
         Callback = function()
@@ -660,6 +677,8 @@ function Loader:AddConfigControls(where, logger)
     return {
         Dropdown = dropdown,
         NameInput = nameInput,
+        CreateButton = createButton,
+        DeleteButton = deleteButton,
     }
 end
 
@@ -682,11 +701,13 @@ function Loader:AddToggle(where, text, callback)
         QueueSaveConfig()
     end
 
-    local toggle = where:AddLabel(text):AddToggle({
+    local label = where:AddLabel(text)
+    local toggle = label:AddToggle({
         Default = State.Config[text] or false,
         Flag = text,
         Callback = OnChanged,
     })
+    AttachLabelSetter(toggle, label)
 
     State.Controls[text] = toggle
     State.Config[text] = toggle:GetValue()
@@ -745,7 +766,8 @@ function Loader:AddDropdown(where, text, data)
         end
     end
 
-    local dropdown = where:AddLabel(text):AddDropdown({
+    local label = where:AddLabel(text)
+    local dropdown = label:AddDropdown({
         Default = default,
         Multi = data.Multi,
         AutoUpdate = data.AutoUpdate,
@@ -760,6 +782,7 @@ function Loader:AddDropdown(where, text, data)
             QueueSaveConfig()
         end,
     })
+    AttachLabelSetter(dropdown, label)
 
     State.Controls[text] = dropdown
     State.Config[text] = data.Multi and ToArray(dropdown:GetValue()) or dropdown:GetValue()
@@ -777,7 +800,8 @@ function Loader:AddTextbox(where, text, data)
         value = data.Default
     end
 
-    local textbox = where:AddLabel(text):AddTextInput({
+    local label = where:AddLabel(text)
+    local textbox = label:AddTextInput({
         Placeholder = data.Placeholder,
         Numeric = data.Numeric,
         Size = data.Size or 100,
@@ -789,6 +813,7 @@ function Loader:AddTextbox(where, text, data)
             QueueSaveConfig()
         end,
     })
+    AttachLabelSetter(textbox, label)
 
     State.Controls[text] = textbox
     State.Config[text] = textbox:GetValue()
@@ -806,7 +831,8 @@ function Loader:AddKeybind(where, text, data)
         value = data.Default
     end
 
-    local keybind = where:AddLabel(text):AddKeybind({
+    local label = where:AddLabel(text)
+    local keybind = label:AddKeybind({
         Default = value,
         Flag = text,
         Callback = function(v)
@@ -815,6 +841,7 @@ function Loader:AddKeybind(where, text, data)
             QueueSaveConfig()
         end,
     })
+    AttachLabelSetter(keybind, label)
 
     State.Controls[text] = keybind
     State.Config[text] = keybind:GetValue()
