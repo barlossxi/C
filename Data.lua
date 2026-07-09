@@ -61,6 +61,12 @@ local function AttachLabelSetter(control, label)
         label:SetText(value)
     end
 
+    if label.SetDescription then
+        control.SetDescription = function(_, value)
+            label:SetDescription(value)
+        end
+    end
+
     return control
 end
 
@@ -688,9 +694,13 @@ function Loader:GetService()
 end
 
 function Loader:AddToggle(where, text, callback)
+    local data = typeof(callback) == "table" and callback or {
+        Callback = callback,
+    }
+
     local function OnChanged(state)
         State.Config[text] = state
-        SafeCall(callback, state)
+        SafeCall(data.Callback, state)
 
         if state then
             StartLoop(text)
@@ -701,9 +711,16 @@ function Loader:AddToggle(where, text, callback)
         QueueSaveConfig()
     end
 
-    local label = where:AddLabel(text)
+    local defaultValue = State.Config[text]
+    if defaultValue == nil then
+        defaultValue = data.Default or false
+    end
+
+    local label = where:AddLabel(text, {
+        Description = data.Description,
+    })
     local toggle = label:AddToggle({
-        Default = State.Config[text] or false,
+        Default = defaultValue,
         Flag = text,
         Callback = OnChanged,
     })
@@ -729,7 +746,10 @@ function Loader:AddSlider(where, text, data)
         value = data.Default
     end
 
-    local slider = where:AddLabel(text):AddSlider({
+    local label = where:AddLabel(text, {
+        Description = data.Description,
+    })
+    local slider = label:AddSlider({
         Min = data.Min or 1,
         Max = data.Max or 100,
         Type = data.Type or "",
@@ -744,6 +764,7 @@ function Loader:AddSlider(where, text, data)
             QueueSaveConfig()
         end,
     })
+    AttachLabelSetter(slider, label)
 
     State.Controls[text] = slider
     State.Config[text] = slider:GetValue()
@@ -766,7 +787,9 @@ function Loader:AddDropdown(where, text, data)
         end
     end
 
-    local label = where:AddLabel(text)
+    local label = where:AddLabel(text, {
+        Description = data.Description,
+    })
     local dropdown = label:AddDropdown({
         Default = default,
         Multi = data.Multi,
@@ -800,7 +823,9 @@ function Loader:AddTextbox(where, text, data)
         value = data.Default
     end
 
-    local label = where:AddLabel(text)
+    local label = where:AddLabel(text, {
+        Description = data.Description,
+    })
     local textbox = label:AddTextInput({
         Placeholder = data.Placeholder,
         Numeric = data.Numeric,
@@ -831,7 +856,9 @@ function Loader:AddKeybind(where, text, data)
         value = data.Default
     end
 
-    local label = where:AddLabel(text)
+    local label = where:AddLabel(text, {
+        Description = data.Description,
+    })
     local keybind = label:AddKeybind({
         Default = value,
         Flag = text,
