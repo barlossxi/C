@@ -1658,7 +1658,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		Toggle.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		Toggle.BorderSizePixel = 0
 		Toggle.ClipsDescendants = true
-		Toggle.Size = UDim2.new(0, 30, 0, 18)
+		Toggle.Size = UDim2.new(0, 38, 0, 22)
 		Toggle.ZIndex = ZINdex + 13
 		Toggle.LayoutOrder = -(#Handler:GetChildren() + 5);
 
@@ -1672,8 +1672,8 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		Circle.BackgroundTransparency = 0.500
 		Circle.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		Circle.BorderSizePixel = 0
-		Circle.Position = UDim2.new(0.300000012, 0, 0.5, 0)
-		Circle.Size = UDim2.new(0, 16, 0, 16)
+		Circle.Position = UDim2.new(0.280000001, 0, 0.5, 0)
+		Circle.Size = UDim2.new(0, 18, 0, 18)
 		Circle.ZIndex = ZINdex + 14
 
 		UICorner_2.CornerRadius = UDim.new(1, 0)
@@ -1693,7 +1693,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				NeverLose.PlayAnimate(Circle,SlowyTween,{
 					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 					BackgroundTransparency = 0,
-					Position = UDim2.new(0.7, 0, 0.5, 0)
+					Position = UDim2.new(0.72, 0, 0.5, 0)
 				})
 			else
 				NeverLose.PlayAnimate(Toggle,SlowyTween,{
@@ -1704,7 +1704,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				NeverLose.PlayAnimate(Circle,SlowyTween,{
 					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 					BackgroundTransparency = 0.500,
-					Position = UDim2.new(0.300000012, 0, 0.5, 0)
+					Position = UDim2.new(0.280000001, 0, 0.5, 0)
 				})
 			end;
 		end);
@@ -1721,7 +1721,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				NeverLose.PlayAnimate(Circle,SlowyTween,{
 					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 					BackgroundTransparency = 1,
-					Position = UDim2.new(0.300000012, 0, 0.5, 0)
+					Position = UDim2.new(0.280000001, 0, 0.5, 0)
 				})
 			end;
 		end);
@@ -1779,7 +1779,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			return (Config.Default - Config.Min) / (Config.Max - Config.Min);
 		end);
 
-		local FullNumSize = TextService:GetTextSize(string.rep("0",(Config.Rounding + #tostring(Config.Max))+1)..tostring(Config.Type),10,Enum.Font.GothamMedium,Vector2.new(math.huge,math.huge));
+		local FullNumSize = TextService:GetTextSize(string.rep("0",(Config.Rounding + #tostring(Config.Max))+1)..tostring(Config.Type),12,Enum.Font.GothamMedium,Vector2.new(math.huge,math.huge));
 
 		SliderLib.MaximumSize = FullNumSize.X;
 
@@ -1787,7 +1787,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			local nszie = 0;
 
 			for i,ns in next , Config.Nums do
-				local size = TextService:GetTextSize(string.rep("m",string.len(tostring(ns))),10,Enum.Font.GothamMedium,Vector2.new(math.huge,math.huge));
+				local size = TextService:GetTextSize(string.rep("m",string.len(tostring(ns))),12,Enum.Font.GothamMedium,Vector2.new(math.huge,math.huge));
 
 				if nszie < size.X then
 					nszie = size.X;
@@ -1821,7 +1821,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		Slider.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		Slider.BorderSizePixel = 0
 		Slider.ClipsDescendants = false
-		Slider.Size = UDim2.new(0, Config.Size, 0, 18)
+		Slider.Size = UDim2.new(0, Config.Size, 0, 26)
 		Slider.ZIndex = ZINdex + 13
 		Slider.LayoutOrder = -(#Handler:GetChildren() + 5);
 
@@ -1836,7 +1836,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		ValueFrame.BorderSizePixel = 0
 		ValueFrame.ClipsDescendants = true
 		ValueFrame.Position = UDim2.new(1, 0, 0, 0)
-		ValueFrame.Size = UDim2.new(0, SliderLib.MaximumSize + boxSize, 0, 18)
+		ValueFrame.Size = UDim2.new(0, SliderLib.MaximumSize + 8, 0, 26)
 		ValueFrame.ZIndex = ZINdex + 13
 
 		UICorner_2.CornerRadius = UDim.new(0, 4)
@@ -1859,7 +1859,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		ValueLabel.Font = Enum.Font.GothamMedium
 		ValueLabel.Text = tostring(Config.Default)..tostring(Config.Type);
 		ValueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		ValueLabel.TextSize = 10.000
+		ValueLabel.TextSize = 12.000
 		ValueLabel.ClearTextOnFocus = false;
 		ValueLabel.TextTransparency = 0.350
 
@@ -1871,7 +1871,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		SlideMain.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		SlideMain.BorderSizePixel = 0
 		SlideMain.Position = UDim2.new(0, 0, 0.5, 0)
-		SlideMain.Size = UDim2.new(1, -((SliderLib.MaximumSize + 11)), 0, 18)
+		SlideMain.Size = UDim2.new(1, -((SliderLib.MaximumSize + 17)), 0, 26)
 		SlideMain.ZIndex = ZINdex + 13
 
 		SlideFrame.Name = NeverLose.RandomString();
@@ -1881,7 +1881,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		SlideFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		SlideFrame.BorderSizePixel = 0
 		SlideFrame.Position = UDim2.new(0, 0, 0.5, 0)
-		SlideFrame.Size = UDim2.new(1, 0, 0, 5)
+		SlideFrame.Size = UDim2.new(1, 0, 0, 7)
 		SlideFrame.ZIndex = ZINdex + 13
 
 		UICorner_3.CornerRadius = UDim.new(1, 0)
@@ -1903,8 +1903,8 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		Frame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		Frame.BorderSizePixel = 0
-		Frame.Position = UDim2.new(1, 5, 0.5, 0)
-		Frame.Size = UDim2.new(0, 10, 0, 10)
+		Frame.Position = UDim2.new(1, 6, 0.5, 0)
+		Frame.Size = UDim2.new(0, 12, 0, 12)
 		Frame.ZIndex = ZINdex + 15
 
 		UICorner_5.CornerRadius = UDim.new(1, 0)
@@ -1949,7 +1949,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			if value then
 				NeverLose.PlayAnimate(ValueFrame,SlowyTween,{
 					BackgroundTransparency = 0,
-					Size = UDim2.new(0, SliderLib.MaximumSize + boxSize, 0, 18)
+					Size = UDim2.new(0, SliderLib.MaximumSize + 8, 0, 26)
 				});
 
 				NeverLose.PlayAnimate(UIStroke,SlowyTween,{
@@ -2334,7 +2334,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		Keybind.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		Keybind.BorderSizePixel = 0
 		Keybind.ClipsDescendants = true
-		Keybind.Size = UDim2.new(0, 45, 0, 18)
+		Keybind.Size = UDim2.new(0, 55, 0, 26)
 		Keybind.ZIndex = ZINdex + 13
 
 		UICorner.CornerRadius = UDim.new(0, 4)
@@ -2358,7 +2358,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		ValueLabel.Font = Enum.Font.GothamMedium
 		ValueLabel.Text = NeverLose:KeyCodeToStr(Config.Default or "None")
 		ValueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		ValueLabel.TextSize = 10.000
+		ValueLabel.TextSize = 12.000
 		ValueLabel.TextTransparency = 0.500
 
 		KeybindLib.SetRender = LPH_NO_VIRTUALIZE(function(value)
@@ -2393,7 +2393,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			local size = TextService:GetTextSize(ValueLabel.Text,ValueLabel.TextSize,ValueLabel.Font,Vector2.new(math.huge,math.huge));
 
 			NeverLose.PlayAnimate(Keybind , SlowyTween , {
-				Size = UDim2.new(0, size.X + 7, 0, 18)
+				Size = UDim2.new(0, size.X + 14, 0, 26)
 			})
 		end;
 
@@ -2488,7 +2488,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		TextInput.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		TextInput.BorderSizePixel = 0
 		TextInput.ClipsDescendants = true
-		TextInput.Size = UDim2.new(0, Config.Size, 0, 18)
+		TextInput.Size = UDim2.new(0, Config.Size, 0, 26)
 		TextInput.ZIndex = ZINdex + 13
 
 		UICorner.CornerRadius = UDim.new(0, 4)
@@ -2504,15 +2504,15 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		TextBox.BackgroundTransparency = 1.000
 		TextBox.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		TextBox.BorderSizePixel = 0
-		TextBox.Position = UDim2.new(0, 5, 0.5, 0)
-		TextBox.Size = UDim2.new(1, -5, 0, 17)
+		TextBox.Position = UDim2.new(0, 8, 0.5, 0)
+		TextBox.Size = UDim2.new(1, -12, 0, 20)
 		TextBox.ZIndex = ZINdex + 14
 		TextBox.ClearTextOnFocus = false
 		TextBox.Font = Enum.Font.GothamMedium
 		TextBox.PlaceholderText = Config.Placeholder
 		TextBox.Text = tostring(Config.Default)
 		TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-		TextBox.TextSize = 11.000
+		TextBox.TextSize = 12.000
 		TextBox.TextTransparency = 0.350
 		TextBox.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2602,7 +2602,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		Dropdown.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		Dropdown.BorderSizePixel = 0
 		Dropdown.ClipsDescendants = true
-		Dropdown.Size = UDim2.new(0, Config.Size, 0, 18)
+		Dropdown.Size = UDim2.new(0, Config.Size, 0, 26)
 		Dropdown.ZIndex = ZINdex + 13
 
 		DropdownIcon.Name = NeverLose.RandomString();
@@ -2612,13 +2612,13 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		DropdownIcon.BackgroundTransparency = 1.000
 		DropdownIcon.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		DropdownIcon.BorderSizePixel = 0
-		DropdownIcon.Position = UDim2.new(1, -2, 0.5, 0)
-		DropdownIcon.Size = UDim2.new(0, 18, 0, 18)
+		DropdownIcon.Position = UDim2.new(1, -4, 0.5, 0)
+		DropdownIcon.Size = UDim2.new(0, 20, 0, 20)
 		DropdownIcon.ZIndex = ZINdex + 14
 		DropdownIcon.FontFace = NeverLose.BuiltInBold
 		DropdownIcon.Text = "chevron-small-down"
 		DropdownIcon.TextColor3 = Color3.fromRGB(223, 223, 223)
-		DropdownIcon.TextSize = 16.000
+		DropdownIcon.TextSize = 18.000
 		DropdownIcon.TextTransparency = 0.250
 		DropdownIcon.TextWrapped = true
 
@@ -2637,13 +2637,13 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		BasedLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		BasedLabel.BorderSizePixel = 0
 		BasedLabel.ClipsDescendants = true
-		BasedLabel.Position = UDim2.new(0, 5, 0.5, 0)
-		BasedLabel.Size = UDim2.new(1, -25, 0, 15)
+		BasedLabel.Position = UDim2.new(0, 8, 0.5, 0)
+		BasedLabel.Size = UDim2.new(1, -32, 0, 17)
 		BasedLabel.ZIndex = ZINdex + 14
 		BasedLabel.Font = Enum.Font.GothamMedium
 		BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
 		BasedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		BasedLabel.TextSize = 12.000
+		BasedLabel.TextSize = 13.000
 		BasedLabel.TextTransparency = 0.5
 		BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2766,14 +2766,14 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			DropdownSearchBox.BackgroundTransparency = 0.5
 			DropdownSearchBox.BorderSizePixel = 0
 			DropdownSearchBox.Position = UDim2.new(0.5, 0, 0, 4)
-			DropdownSearchBox.Size = UDim2.new(1, -10, 0, 20)
+			DropdownSearchBox.Size = UDim2.new(1, -10, 0, 24)
 			DropdownSearchBox.ZIndex = ZINdex + 128
 			DropdownSearchBox.ClearTextOnFocus = false
 			DropdownSearchBox.Font = Enum.Font.GothamMedium
 			DropdownSearchBox.PlaceholderText = "Search..."
 			DropdownSearchBox.Text = ""
 			DropdownSearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-			DropdownSearchBox.TextSize = 11
+			DropdownSearchBox.TextSize = 12
 			DropdownSearchBox.TextTransparency = 0.35
 			DropdownSearchBox.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2782,13 +2782,13 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			DropdownSearchIcon.AnchorPoint = Vector2.new(1, 0.5)
 			DropdownSearchIcon.BackgroundTransparency = 1
 			DropdownSearchIcon.BorderSizePixel = 0
-			DropdownSearchIcon.Position = UDim2.new(1, -7, 0, 14)
-			DropdownSearchIcon.Size = UDim2.new(0, 14, 0, 14)
+			DropdownSearchIcon.Position = UDim2.new(1, -8, 0, 16)
+			DropdownSearchIcon.Size = UDim2.new(0, 16, 0, 16)
 			DropdownSearchIcon.ZIndex = ZINdex + 129
 			DropdownSearchIcon.FontFace = NeverLose.BuiltInBold
 			DropdownSearchIcon.Text = "magnifying-glass"
 			DropdownSearchIcon.TextColor3 = Color3.fromRGB(223, 223, 223)
-			DropdownSearchIcon.TextSize = 12
+			DropdownSearchIcon.TextSize = 13
 			DropdownSearchIcon.TextTransparency = 0.5
 			DropdownSearchIcon.TextWrapped = true
 
@@ -2803,8 +2803,8 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			DropdownScrollFrame.BackgroundTransparency = 1.000
 			DropdownScrollFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			DropdownScrollFrame.BorderSizePixel = 0
-			DropdownScrollFrame.Position = UDim2.new(0.5, 0, 0, 28)
-			DropdownScrollFrame.Size = UDim2.new(1, -5, 1, -30)
+			DropdownScrollFrame.Position = UDim2.new(0.5, 0, 0, 32)
+			DropdownScrollFrame.Size = UDim2.new(1, -5, 1, -34)
 			DropdownScrollFrame.ZIndex = ZINdex + 127
 			DropdownScrollFrame.ScrollBarThickness = 0
 
@@ -2830,7 +2830,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			NeverLose:AddSignal(UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(LPH_NO_VIRTUALIZE(function()
 				DropdownScrollFrame.CanvasSize = UDim2.fromOffset(0,UIListLayout.AbsoluteContentSize.Y)
 				NeverLose.PlayAnimate(DropdownHandler , SlowyTween , {
-					Size = UDim2.new(0, (Dropdown.AbsoluteSize.X + 5) + DropdownLib.ExtentSize, 0, math.min(UIListLayout.AbsoluteContentSize.Y + 33, 278));
+					Size = UDim2.new(0, (Dropdown.AbsoluteSize.X + 5) + DropdownLib.ExtentSize, 0, math.min(UIListLayout.AbsoluteContentSize.Y + 40, 320));
 				})
 			end)));
 
@@ -2851,7 +2851,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				if value then
 					Shadow:Render(true);
 
-					DropdownHandler.Size = UDim2.new(0, (Dropdown.AbsoluteSize.X + 5) + DropdownLib.ExtentSize, 0, math.min(UIListLayout.AbsoluteContentSize.Y + 33, 278));
+					DropdownHandler.Size = UDim2.new(0, (Dropdown.AbsoluteSize.X + 5) + DropdownLib.ExtentSize, 0, math.min(UIListLayout.AbsoluteContentSize.Y + 40, 320));
 
 					SetPosition();
 
@@ -2939,7 +2939,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				ItemFrame.BackgroundTransparency = 1.000
 				ItemFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				ItemFrame.BorderSizePixel = 0
-				ItemFrame.Size = UDim2.new(1, 0, 0, 25)
+				ItemFrame.Size = UDim2.new(1, 0, 0, 30)
 				ItemFrame.ZIndex = ZINdex + 1258
 
 				ItemLabel.Name = NeverLose.RandomString();
@@ -2948,13 +2948,13 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				ItemLabel.BackgroundTransparency = 1.000
 				ItemLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				ItemLabel.BorderSizePixel = 0
-				ItemLabel.Position = UDim2.new(0, 15, 0, 4)
-				ItemLabel.Size = UDim2.new(0,1, 0, 15)
+				ItemLabel.Position = UDim2.new(0, 15, 0, 6)
+				ItemLabel.Size = UDim2.new(0,1, 0, 18)
 				ItemLabel.ZIndex = ZINdex + 1258
 				ItemLabel.Font = Enum.Font.GothamMedium
 				ItemLabel.Text = tostring(Value);
 				ItemLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-				ItemLabel.TextSize = 13.000
+				ItemLabel.TextSize = 14.000
 				ItemLabel.TextTransparency = 0.200
 				ItemLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2976,12 +2976,12 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 					Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
 					Icon.BorderSizePixel = 0
 					Icon.Position = UDim2.new(0, 5, 0.5, 0)
-					Icon.Size = UDim2.new(0, 20, 0, 20)
+					Icon.Size = UDim2.new(0, 22, 0, 22)
 					Icon.ZIndex = ZINdex + 1259
 					Icon.FontFace = NeverLose.BuiltInBold;
 					Icon.Text = "check"
 					Icon.TextColor3 = Color3.fromRGB(223, 223, 223)
-					Icon.TextSize = 18.000
+					Icon.TextSize = 19.000
 					Icon.TextTransparency = 1
 					Icon.TextWrapped = true;
 
@@ -2989,7 +2989,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 						if DropdownLib.IsMatch(Value) then
 							NeverLose.PlayAnimate(ItemLabel , VSlowTween , {
 								TextTransparency = 0.200,
-								Position = UDim2.new(0, 30, 0, 4)
+								Position = UDim2.new(0, 32, 0, 6)
 							})
 
 							NeverLose.PlayAnimate(Icon , SlowyTween , {
@@ -3005,7 +3005,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 
 							NeverLose.PlayAnimate(ItemLabel , VSlowTween , {
 								TextTransparency = 0.5,
-								Position = UDim2.new(0, 15, 0, 4)
+								Position = UDim2.new(0, 15, 0, 6)
 							})
 						end;
 					end);
@@ -3369,9 +3369,20 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 	local idx = {};
 	local LayerIndex = Frame.ZIndex;
 
-	function idx:AddLabel(Name: string, Warp: boolean)
+function idx:AddLabel(Name: string, Warp, Description)
+		local LabelConfig = {};
+
+		if typeof(Warp) == "table" then
+			LabelConfig = Warp;
+			Warp = LabelConfig.Warp;
+		else
+			LabelConfig.Description = Description;
+		end;
+
+		local DescriptionText = LabelConfig.Description;
 		local BasedFrame = Instance.new("Frame")
 		local BasedLabel = Instance.new("TextLabel")
+		local DescriptionLabel = Instance.new("TextLabel")
 		local LineFrame = Instance.new("Frame")
 		local BasedHandler = Instance.new("Frame")
 		local UIListLayout = Instance.new("UIListLayout")
@@ -3382,7 +3393,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedFrame.BackgroundColor3 = Color3.fromRGB(25, 27, 33)
 		BasedFrame.BackgroundTransparency = 1.000
 		BasedFrame.BorderSizePixel = 0
-		BasedFrame.Size = UDim2.new(1, 0, 0, 30) -- ความสูงเริ่มต้น
+		BasedFrame.Size = UDim2.new(1, 0, 0, 42)
 		BasedFrame.ZIndex = LayerIndex + 8
 
 		local Query = NeverLose:AddQuery(BasedFrame, Name);
@@ -3390,17 +3401,32 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedLabel.Name = NeverLose.RandomString();
 		BasedLabel.Parent = BasedFrame
 		BasedLabel.BackgroundTransparency = 1.000
-		BasedLabel.Position = UDim2.new(0, 11, 0, 8) -- ปรับตำแหน่งให้อยู่กลางสวยๆ
-		BasedLabel.Size = UDim2.new(1, -22, 0, 15) -- ความกว้างลบ Padding ออก
+		BasedLabel.Position = UDim2.new(0, 11, 0, 8)
+		BasedLabel.Size = UDim2.new(0, 1, 0, 18)
 		BasedLabel.ZIndex = LayerIndex + 9
 		BasedLabel.Font = Enum.Font.GothamMedium
 		BasedLabel.Text = Name
 		BasedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		BasedLabel.TextSize = 13.000
-		BasedLabel.TextTransparency = 0.35
+		BasedLabel.TextSize = 15.000
+		BasedLabel.TextTransparency = 0.250
 		BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
 		BasedLabel.TextYAlignment = Enum.TextYAlignment.Top
-		BasedLabel.TextWrapped = true -- [[ บังคับให้ข้อความตัดบรรทัดเองเมื่อสุดขอบ ]]
+
+		DescriptionLabel.Name = NeverLose.RandomString();
+		DescriptionLabel.Parent = BasedFrame
+		DescriptionLabel.BackgroundTransparency = 1.000
+		DescriptionLabel.Position = UDim2.new(0, 11, 0, 30)
+		DescriptionLabel.Size = UDim2.new(0, 1, 0, 0)
+		DescriptionLabel.ZIndex = LayerIndex + 9
+		DescriptionLabel.Font = Enum.Font.Gotham
+		DescriptionLabel.Text = DescriptionText and tostring(DescriptionText) or ""
+		DescriptionLabel.TextColor3 = Color3.fromRGB(220, 224, 232)
+		DescriptionLabel.TextSize = 12.000
+		DescriptionLabel.TextTransparency = 0.450
+		DescriptionLabel.TextWrapped = true
+		DescriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
+		DescriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
+		DescriptionLabel.Visible = DescriptionLabel.Text ~= ""
 
 		LineFrame.Name = NeverLose.RandomString();
 		LineFrame.Parent = BasedFrame
@@ -3415,8 +3441,8 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedHandler.Parent = BasedFrame
 		BasedHandler.AnchorPoint = Vector2.new(1, 0)
 		BasedHandler.BackgroundTransparency = 1.000
-		BasedHandler.Position = UDim2.new(1, -11, 0, 2)
-		BasedHandler.Size = UDim2.new(1, -20, 0, 25)
+		BasedHandler.Position = UDim2.new(1, -11, 0, 7)
+		BasedHandler.Size = UDim2.new(0, 0, 0, 28)
 		BasedHandler.ZIndex = LayerIndex + 12
 
 		UIListLayout.Parent = BasedHandler
@@ -3424,53 +3450,104 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-		UIListLayout.Padding = UDim.new(0, 5)
+		UIListLayout.Padding = UDim.new(0, 6)
 
 		UICorner.CornerRadius = UDim.new(0, 10)
 		UICorner.Parent = BasedFrame
-		local UpdateWarp = LPH_NO_VIRTUALIZE(function()
+
+		local UpdateQuery = LPH_NO_VIRTUALIZE(function()
+			if Query then
+				local queryText = tostring(BasedLabel.Text or "")
+				local descriptionValue = tostring(DescriptionLabel.Text or "")
+				Query.Idx = descriptionValue ~= "" and (queryText .. " " .. descriptionValue) or queryText
+			end;
+		end);
+
+		local UpdateLayout = LPH_NO_VIRTUALIZE(function()
 			while BasedFrame.AbsoluteSize.X <= 0 do
 				task.wait()
 			end
-			local maxWidth = BasedFrame.AbsoluteSize.X - 25
-			local textSize = TextService:GetTextSize(
+
+			local handlerWidth = math.max(UIListLayout.AbsoluteContentSize.X, 0)
+			local handlerHeight = math.max(UIListLayout.AbsoluteContentSize.Y, 0)
+			local reservedWidth = handlerWidth > 0 and (handlerWidth + 14) or 0
+			local maxWidth = math.max(120, BasedFrame.AbsoluteSize.X - 22 - reservedWidth)
+			local descriptionValue = tostring(DescriptionLabel.Text or "")
+			local titleWrapped = Warp ~= false or descriptionValue ~= ""
+			local spacing = 0
+			local descriptionHeight = 0
+
+			BasedLabel.TextWrapped = titleWrapped
+
+			local titleSize = TextService:GetTextSize(
 				BasedLabel.Text,
 				BasedLabel.TextSize,
 				BasedLabel.Font,
-				Vector2.new(maxWidth, math.huge)
+				Vector2.new(titleWrapped and maxWidth or math.huge, math.huge)
 			)
-			local finalHeight = math.max(30, textSize.Y + 18)
+			local titleHeight = titleWrapped and titleSize.Y or math.max(18, titleSize.Y)
+
+			if descriptionValue ~= "" then
+				spacing = 4
+				descriptionHeight = TextService:GetTextSize(
+					descriptionValue,
+					DescriptionLabel.TextSize,
+					DescriptionLabel.Font,
+					Vector2.new(maxWidth, math.huge)
+				).Y
+			end
+
+			local controlHeight = math.max(28, handlerHeight)
+			local textHeight = titleHeight + spacing + descriptionHeight
+			local finalHeight = math.max(descriptionValue ~= "" and 60 or 42, textHeight + 16, controlHeight + 14)
+
+			BasedLabel.Size = UDim2.new(0, maxWidth, 0, titleHeight)
+			DescriptionLabel.Visible = descriptionValue ~= ""
+			DescriptionLabel.Position = UDim2.new(0, 11, 0, 8 + titleHeight + spacing)
+			DescriptionLabel.Size = UDim2.new(0, maxWidth, 0, descriptionHeight)
+			BasedHandler.Position = UDim2.new(1, -11, 0, math.max(7, math.floor((finalHeight - controlHeight) / 2)))
+			BasedHandler.Size = UDim2.new(0, handlerWidth, 0, controlHeight)
 
 			NeverLose.PlayAnimate(BasedFrame, SlowyTween, {
 				Size = UDim2.new(1, 0, 0, finalHeight)
 			})
-
-			BasedLabel.Size = UDim2.new(1, -22, 0, textSize.Y)
 		end);
-		if Warp then
-			task.defer(UpdateWarp) 
-		end;
+
+		NeverLose:AddSignal(UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(LPH_NO_VIRTUALIZE(function()
+			task.defer(UpdateLayout)
+		end)))
+		NeverLose:AddSignal(BasedFrame:GetPropertyChangedSignal('AbsoluteSize'):Connect(LPH_NO_VIRTUALIZE(function()
+			task.defer(UpdateLayout)
+		end)))
+
 		local handle = NeverLose:RegisiterHandler(BasedHandler, Signel);
 		handle.Root = BasedFrame;
 
 		handle.SetRender = LPH_NO_VIRTUALIZE(function(value)
-			local trans = value and 0.35 or 1
-			NeverLose.PlayAnimate(BasedLabel, SlowyTween, { TextTransparency = trans })
+			NeverLose.PlayAnimate(BasedLabel, SlowyTween, { TextTransparency = value and 0.25 or 1 })
+			NeverLose.PlayAnimate(DescriptionLabel, SlowyTween, { TextTransparency = value and 0.45 or 1 })
 			NeverLose.PlayAnimate(LineFrame, SlowyTween, { BackgroundTransparency = value and 0.65 or 1 })
 		end);
 
 		function handle:SetText(t)
 			BasedLabel.Text = t
-			if Query then
-				Query.Idx = tostring(t)
-			end
-			if Warp then UpdateWarp() end
+			UpdateQuery()
+			UpdateLayout()
+		end;
+
+		function handle:SetDescription(t)
+			DescriptionLabel.Text = t and tostring(t) or ""
+			UpdateQuery()
+			UpdateLayout()
 		end;
 
 		function handle:ToolTip(Content: string)
 			handle.ToolTip = NeverLose:CreateToolTips(BasedFrame, Name, Content);
 			return handle;
 		end;
+
+		UpdateQuery()
+		task.defer(UpdateLayout)
 
 		handle.SetRender(Signel:GetValue());
 		Signel:Connect(handle.SetRender);
@@ -3481,6 +3558,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		Config = NeverLose:ProcessParams(Config , {
 			Icon = nil or false,
 			Name = "Button",
+			Description = nil,
 			Callback = EmptyFunction,
 			ToolTip = nil,
 		});
@@ -3488,11 +3566,13 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		local Button = {};
 		local ButtonFrame = Instance.new("Frame")
 		local BasedLabel = Instance.new("TextLabel")
+		local DescriptionLabel = Instance.new("TextLabel")
 		local LineFrame = Instance.new("Frame")
 		local UICorner = Instance.new("UICorner")
 		local Icon
 
 		local Query = NeverLose:AddQuery(ButtonFrame , Config.Name);
+		local HasIcon = Config.Icon ~= nil and Config.Icon ~= false and tostring(Config.Icon) ~= ""
 
 		ButtonFrame.Name = NeverLose.RandomString();
 		ButtonFrame.Parent = Frame
@@ -3500,10 +3580,10 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		ButtonFrame.BackgroundTransparency = 1.000
 		ButtonFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		ButtonFrame.BorderSizePixel = 0
-		ButtonFrame.Size = UDim2.new(1, 0, 0, 30)
+		ButtonFrame.Size = UDim2.new(1, 0, 0, 42)
 		ButtonFrame.ZIndex = LayerIndex + 8
 
-		local labelOffset = Config.Icon ~= nil and 35 or 11
+		local labelOffset = HasIcon and 35 or 11
 
 		BasedLabel.Name = NeverLose.RandomString();
 		BasedLabel.Parent = ButtonFrame
@@ -3511,15 +3591,35 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedLabel.BackgroundTransparency = 1.000
 		BasedLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		BasedLabel.BorderSizePixel = 0
-		BasedLabel.Position = UDim2.new(0, labelOffset, 0, 6)
-		BasedLabel.Size = UDim2.new(0,1, 0, 15)
+		BasedLabel.Position = UDim2.new(0, labelOffset, 0, 8)
+		BasedLabel.Size = UDim2.new(0,1, 0, 18)
 		BasedLabel.ZIndex = LayerIndex + 9
 		BasedLabel.Font = Enum.Font.GothamMedium
 		BasedLabel.Text = Config.Name;
 		BasedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		BasedLabel.TextSize = 13.000
+		BasedLabel.TextSize = 15.000
 		BasedLabel.TextTransparency = 0.200
 		BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
+		BasedLabel.TextYAlignment = Enum.TextYAlignment.Top
+
+		DescriptionLabel.Name = NeverLose.RandomString();
+		DescriptionLabel.Parent = ButtonFrame
+		DescriptionLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		DescriptionLabel.BackgroundTransparency = 1.000
+		DescriptionLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		DescriptionLabel.BorderSizePixel = 0
+		DescriptionLabel.Position = UDim2.new(0, labelOffset, 0, 30)
+		DescriptionLabel.Size = UDim2.new(0, 1, 0, 0)
+		DescriptionLabel.ZIndex = LayerIndex + 9
+		DescriptionLabel.Font = Enum.Font.Gotham
+		DescriptionLabel.Text = Config.Description and tostring(Config.Description) or ""
+		DescriptionLabel.TextColor3 = Color3.fromRGB(220, 224, 232)
+		DescriptionLabel.TextSize = 12.000
+		DescriptionLabel.TextTransparency = 0.450
+		DescriptionLabel.TextWrapped = true
+		DescriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
+		DescriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
+		DescriptionLabel.Visible = DescriptionLabel.Text ~= ""
 
 		LineFrame.Name = NeverLose.RandomString();
 		LineFrame.Parent = ButtonFrame
@@ -3535,7 +3635,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		UICorner.CornerRadius = UDim.new(0, 10)
 		UICorner.Parent = ButtonFrame
 
-		if Config.Icon ~= nil then
+		if HasIcon then
 			Icon = Instance.new("TextLabel")
 			Icon.Name = NeverLose.RandomString();
 			Icon.Parent = ButtonFrame
@@ -3544,7 +3644,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 			Icon.BackgroundTransparency = 1.000
 			Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			Icon.BorderSizePixel = 0
-			Icon.Position = UDim2.new(0, 11, 0, 5)
+			Icon.Position = UDim2.new(0, 11, 0, 8)
 			Icon.Size = UDim2.new(0, 18, 0, 18)
 			Icon.ZIndex = LayerIndex + 9
 			Icon.FontFace = NeverLose.BuiltInBold
@@ -3554,6 +3654,60 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 			Icon.TextTransparency = 0.250
 			Icon.TextWrapped = true
 		end
+
+		local UpdateQuery = LPH_NO_VIRTUALIZE(function()
+			if Query then
+				local queryText = tostring(BasedLabel.Text or "")
+				local descriptionValue = tostring(DescriptionLabel.Text or "")
+				Query.Idx = descriptionValue ~= "" and (queryText .. " " .. descriptionValue) or queryText
+			end
+		end)
+
+		local UpdateLayout = LPH_NO_VIRTUALIZE(function()
+			while ButtonFrame.AbsoluteSize.X <= 0 do
+				task.wait()
+			end
+
+			local maxWidth = math.max(120, ButtonFrame.AbsoluteSize.X - labelOffset - 12)
+			local descriptionValue = tostring(DescriptionLabel.Text or "")
+			local titleWrapped = true
+			local spacing = 0
+			local descriptionHeight = 0
+			local titleSize = TextService:GetTextSize(
+				BasedLabel.Text,
+				BasedLabel.TextSize,
+				BasedLabel.Font,
+				Vector2.new(titleWrapped and maxWidth or math.huge, math.huge)
+			)
+			local titleHeight = titleWrapped and titleSize.Y or math.max(18, titleSize.Y)
+
+			BasedLabel.TextWrapped = titleWrapped
+
+			if descriptionValue ~= "" then
+				spacing = 4
+				descriptionHeight = TextService:GetTextSize(
+					descriptionValue,
+					DescriptionLabel.TextSize,
+					DescriptionLabel.Font,
+					Vector2.new(maxWidth, math.huge)
+				).Y
+			end
+
+			local finalHeight = math.max(descriptionValue ~= "" and 60 or 42, titleHeight + descriptionHeight + spacing + 16)
+
+			BasedLabel.Size = UDim2.new(0, maxWidth, 0, titleHeight)
+			DescriptionLabel.Visible = descriptionValue ~= ""
+			DescriptionLabel.Position = UDim2.new(0, labelOffset, 0, 8 + titleHeight + spacing)
+			DescriptionLabel.Size = UDim2.new(0, maxWidth, 0, descriptionHeight)
+
+			NeverLose.PlayAnimate(ButtonFrame , SlowyTween , {
+				Size = UDim2.new(1, 0, 0, finalHeight)
+			});
+		end)
+
+		NeverLose:AddSignal(ButtonFrame:GetPropertyChangedSignal('AbsoluteSize'):Connect(LPH_NO_VIRTUALIZE(function()
+			task.defer(UpdateLayout)
+		end)))
 
 		local bth = NeverLose:CreateInput(ButtonFrame , LPH_NO_VIRTUALIZE(function()
 			Config.Callback();
@@ -3573,9 +3727,14 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 
 		function Button:SetText(t)
 			BasedLabel.Text = t;
-			if Query then
-				Query.Idx = tostring(t)
-			end
+			UpdateQuery()
+			UpdateLayout()
+		end;
+
+		function Button:SetDescription(t)
+			DescriptionLabel.Text = t and tostring(t) or ""
+			UpdateQuery()
+			UpdateLayout()
 		end;
 
 		function Button:SetIcon(t)
@@ -3592,6 +3751,10 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 
 				NeverLose.PlayAnimate(BasedLabel , SlowyTween , {
 					TextTransparency = 0.200
+				});
+
+				NeverLose.PlayAnimate(DescriptionLabel , SlowyTween , {
+					TextTransparency = 0.450
 				});
 
 				NeverLose.PlayAnimate(LineFrame , SlowyTween , {
@@ -3612,6 +3775,10 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 					TextTransparency = 1
 				});
 
+				NeverLose.PlayAnimate(DescriptionLabel , SlowyTween , {
+					TextTransparency = 1
+				});
+
 				NeverLose.PlayAnimate(LineFrame , SlowyTween , {
 					BackgroundTransparency = 1
 				});
@@ -3627,6 +3794,9 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		if Config.ToolTip then
 			Button.ToolTip = NeverLose:CreateToolTips(ButtonFrame , Config.Name , Config.ToolTip);
 		end;
+
+		UpdateQuery()
+		task.defer(UpdateLayout)
 
 		Button.SetRender(Signel:GetValue())
 		Signel:Connect(Button.SetRender);
@@ -4597,6 +4767,8 @@ function NeverLose:CreateWindow(Config)
 		local UIListLayout = Instance.new("UIListLayout")
 		local RightScroll = Instance.new("ScrollingFrame")
 		local UIListLayout_2 = Instance.new("UIListLayout")
+		local CurrentSectionLayout = "double"
+		local HasLockedSingleLayout = Config.Type == "Single"
 
 		TabFrame.Name = NeverLose.RandomString();
 		TabFrame.Parent = TabContainer
@@ -4649,18 +4821,39 @@ function NeverLose:CreateWindow(Config)
 		UIListLayout_2.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout_2.Padding = UDim.new(0, 5)
 
-		if Config.Type == "Single" then
-			UIListLayout_2:Destroy();
-			RightScroll:Destroy();
-			RightScroll = LeftScroll;
-			UIListLayout_2 = UIListLayout;
-			LeftScroll.Size = UDim2.new(1, 0, 1, -5);
-			LeftScroll.Position = UDim2.new(0.5, 0, 0.5, 0)
-		else
-			NeverLose:AddSignal(UIListLayout_2:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(LPH_NO_VIRTUALIZE(function()
-				RightScroll.CanvasSize = UDim2.fromOffset(0,UIListLayout_2.AbsoluteContentSize.Y + 1)
-			end)))
-		end;
+		local ApplySectionLayout = LPH_NO_VIRTUALIZE(function(mode)
+			if HasLockedSingleLayout and mode ~= "single" then
+				mode = "single"
+			end
+
+			CurrentSectionLayout = mode
+
+			if mode == "single" then
+				for _, Child in next, RightScroll:GetChildren() do
+					if Child:IsA("Frame") then
+						Child.Parent = LeftScroll
+					end
+				end
+
+				LeftScroll.Size = UDim2.new(1, 0, 1, -5);
+				LeftScroll.Position = UDim2.new(0.5, 0, 0.5, 0)
+				RightScroll.Visible = false
+				RightScroll.Active = false
+			else
+				LeftScroll.Size = UDim2.new(0.5, 0, 1, -5);
+				LeftScroll.Position = UDim2.new(0.25, 0, 0.5, 0)
+				RightScroll.Visible = true
+				RightScroll.Active = true
+				RightScroll.Size = UDim2.new(0.5, 0, 1, -5)
+				RightScroll.Position = UDim2.new(0.75, 0, 0.5, 0)
+			end
+		end);
+
+		NeverLose:AddSignal(UIListLayout_2:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(LPH_NO_VIRTUALIZE(function()
+			RightScroll.CanvasSize = UDim2.fromOffset(0,UIListLayout_2.AbsoluteContentSize.Y + 1)
+		end)))
+
+		ApplySectionLayout(HasLockedSingleLayout and "single" or "double")
 
 		NeverLose:AddSignal(TabIcon:GetPropertyChangedSignal('TextTransparency'):Connect(LPH_NO_VIRTUALIZE(function()
 			if TabIcon.TextTransparency > 0.4 then
@@ -4785,15 +4978,29 @@ function NeverLose:CreateWindow(Config)
 				Position = 'left'
 			});
 
+			local Position = string.lower(tostring(Config.Position or 'left'))
+
+			if Position == "full" or Position == "single" then
+				HasLockedSingleLayout = true
+				ApplySectionLayout("single")
+			elseif not HasLockedSingleLayout then
+				ApplySectionLayout("double")
+			end;
+
 			local SectionFrame = Instance.new("Frame")
 			local SectionLabel = Instance.new("TextLabel")
 			local SectionHandler = Instance.new("Frame")
 			local UIStroke = Instance.new("UIStroke")
 			local UICorner = Instance.new("UICorner")
 			local UIListLayout = Instance.new("UIListLayout")
+			local SectionParent = LeftScroll
+
+			if CurrentSectionLayout == "double" and Position == "right" then
+				SectionParent = RightScroll
+			end
 
 			SectionFrame.Name = NeverLose.RandomString();
-			SectionFrame.Parent = (string.lower(Config.Position) == 'left' and LeftScroll) or RightScroll
+			SectionFrame.Parent = SectionParent
 			SectionFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 			SectionFrame.BackgroundTransparency = 1.000
 			SectionFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -4809,13 +5016,13 @@ function NeverLose:CreateWindow(Config)
 			SectionLabel.BackgroundTransparency = 1.000
 			SectionLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			SectionLabel.BorderSizePixel = 0
-			SectionLabel.Position = UDim2.new(0.5, 0, 0, 0)
-			SectionLabel.Size = UDim2.new(1, -35, 0, 15)
+			SectionLabel.Position = UDim2.new(0.5, 0, 0, 2)
+			SectionLabel.Size = UDim2.new(1, -32, 0, 18)
 			SectionLabel.ZIndex = 9
 			SectionLabel.Font = Enum.Font.GothamMedium
 			SectionLabel.Text = Config.Name
 			SectionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-			SectionLabel.TextSize = 11.000
+			SectionLabel.TextSize = 13.000
 			SectionLabel.TextTransparency = 0.500
 			SectionLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -4827,8 +5034,8 @@ function NeverLose:CreateWindow(Config)
 			SectionHandler.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			SectionHandler.BorderSizePixel = 0
 			SectionHandler.ClipsDescendants = true
-			SectionHandler.Position = UDim2.new(0.5, 0, 0, 20)
-			SectionHandler.Size = UDim2.new(1, -10, 1, -21)
+			SectionHandler.Position = UDim2.new(0.5, 0, 0, 24)
+			SectionHandler.Size = UDim2.new(1, -10, 1, -25)
 			SectionHandler.ZIndex = 9
 
 			UIStroke.Transparency = 0.650
@@ -4842,19 +5049,17 @@ function NeverLose:CreateWindow(Config)
 			UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 			UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(LPH_NO_VIRTUALIZE(function()
-
-
+			NeverLose:AddSignal(UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(LPH_NO_VIRTUALIZE(function()
 				if UIListLayout.AbsoluteContentSize.Y <= 1 then
 					NeverLose.PlayAnimate(SectionFrame , VSlowTween , {
 						Size = UDim2.new(1, -5, 0, 0)
 					})
 				else
 					NeverLose.PlayAnimate(SectionFrame , VSlowTween , {
-						Size = UDim2.new(1, -5, 0, UIListLayout.AbsoluteContentSize.Y + 19.5)
+						Size = UDim2.new(1, -5, 0, UIListLayout.AbsoluteContentSize.Y + 25)
 					})
 				end;
-			end));
+			end)));
 
 			local Section = NeverLose:RegisiterItem(SectionHandler , Tab.Signal);
 
