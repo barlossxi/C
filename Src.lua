@@ -3723,7 +3723,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 	local idx = {};
 	local LayerIndex = Frame.ZIndex;
 
-function idx:AddLabel(Name: string, Warp, Description)
+	function idx:AddLabel(Name: string, Warp, Description)
 		local LabelConfig = {};
 
 		if typeof(Warp) == "table" then
