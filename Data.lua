@@ -51,6 +51,149 @@ local function SafeCall(callback, ...)
     end
 end
 
+function Loader:LoadTranslations(localPath, fallback)
+    local compiler = loadstring or load
+    fallback = typeof(fallback) == "table" and fallback or {}
+
+    if type(compiler) ~= "function" then
+        return fallback
+    end
+
+    if type(readfile) ~= "function" or type(isfile) ~= "function" or not isfile(localPath) then
+        return fallback
+    end
+
+    local chunk, compileError = compiler(readfile(localPath))
+    if not chunk then
+        warn("[Loader] Translation compile error:", tostring(compileError))
+        return fallback
+    end
+
+    local ok, result = pcall(chunk)
+    if not ok then
+        warn("[Loader] Translation runtime error:", tostring(result))
+        return fallback
+    end
+
+    if typeof(result) ~= "table" then
+        warn("[Loader] Translation file must return a table")
+        return fallback
+    end
+
+    return result
+end
+
+function Loader.NormalizeLanguage(value)
+    return string.upper(tostring(value or "EN")) == "TH" and "TH" or "EN"
+end
+
+function Loader.ApplyControlLocalization(control, name, description)
+    if control and name and control.SetText then
+        control:SetText(name)
+    end
+
+    if control and description ~= nil and control.SetDescription then
+        control:SetDescription(description)
+    end
+end
+
+function Loader:BindNeverLose(NeverLose)
+    local function SnapshotTextLabels()
+        local labels = {}
+
+        for _, instance in next, NeverLose.ScreenGui:GetDescendants() do
+            if instance:IsA("TextLabel") then
+                labels[instance] = true
+            end
+        end
+
+        return labels
+    end
+
+    local function FindCreatedTextLabel(snapshot, targetText)
+        for _, instance in next, NeverLose.ScreenGui:GetDescendants() do
+            if instance:IsA("TextLabel") and not snapshot[instance] and instance.Text == targetText then
+                return instance
+            end
+        end
+    end
+
+    local function FindRegistryEntry(label, targetText)
+        for index = #(NeverLose.NameRegisitry or {}), 1, -1 do
+            local entry = NeverLose.NameRegisitry[index]
+            if entry and entry.Idx == targetText and label:IsDescendantOf(entry.Root) then
+                return entry
+            end
+        end
+    end
+
+    local function AttachTextSetter(control, label, initialText)
+        if not control or not label then
+            return control
+        end
+
+        local query = FindRegistryEntry(label, initialText)
+        local originalSetText = control.SetText
+        local originalSetDescription = control.SetDescription
+
+        control.SetText = function(_, value)
+            value = tostring(value)
+
+            if originalSetText then
+                originalSetText(control, value)
+            else
+                label.Text = value
+            end
+
+            if query then
+                query.Idx = value
+            end
+        end
+
+        if originalSetDescription then
+            control.SetDescription = function(_, value)
+                originalSetDescription(control, value)
+
+                if query then
+                    local nameValue = tostring(label.Text or "")
+                    local descriptionValue = value and tostring(value) or ""
+                    query.Idx = descriptionValue ~= "" and (nameValue .. " " .. descriptionValue) or nameValue
+                end
+            end
+        end
+
+        return control
+    end
+
+    local function CreateNamedControl(targetText, createFn)
+        local snapshot = SnapshotTextLabels()
+        local control = createFn()
+        local label = FindCreatedTextLabel(snapshot, targetText)
+
+        return AttachTextSetter(control, label, targetText), label
+    end
+
+    local function CaptureNamedLabels(targets, createFn)
+        local snapshot = SnapshotTextLabels()
+        local result = createFn()
+        local labels = {}
+
+        for _, instance in next, NeverLose.ScreenGui:GetDescendants() do
+            if instance:IsA("TextLabel") and not snapshot[instance] and targets[instance.Text] and not labels[instance.Text] then
+                labels[instance.Text] = instance
+            end
+        end
+
+        return result, labels
+    end
+
+    return {
+        AttachTextSetter = AttachTextSetter,
+        CreateNamedControl = CreateNamedControl,
+        CaptureNamedLabels = CaptureNamedLabels,
+    }
+end
+
 local function AttachLabelSetter(control, label)
     if not control or not label or not label.SetText then
         return control
@@ -634,13 +777,12 @@ function Loader:AddConfigControls(where, logger)
     AttachLabelSetter(nameInput, nameInputLabel)
 
     local createButton = where:AddButton({
-        Icon = "plus-large",
         Name = "Create Config",
         Callback = function()
             local rawName = tostring(nameInput:GetValue() or createName or "")
             if rawName:gsub("%s+", "") == "" then
                 if logger then
-                    logger.new("folder", "Enter config name", 3.5)
+                    logger.new("triangle-alert", "Enter config name", 3.5)
                 end
 
                 return
@@ -653,20 +795,19 @@ function Loader:AddConfigControls(where, logger)
             nameInput:SetValue("")
 
             if logger then
-                logger.new("folder", "Created " .. selectedName, 3.5)
+                logger.new("folder-plus", "Created " .. selectedName, 3.5)
             end
         end,
     })
 
     local deleteButton = where:AddButton({
-        Icon = "trash-can",
         Name = "Delete Config",
         Callback = function()
             selectedName = SanitizeConfigName(dropdown:GetValue() or selectedName)
 
             if not Loader:DeleteConfig(selectedName) then
                 if logger then
-                    logger.new("trash-can", "Cannot delete " .. selectedName, 3.5)
+                    logger.new("trash-2", "Cannot delete " .. selectedName, 3.5)
                 end
 
                 return
@@ -675,7 +816,7 @@ function Loader:AddConfigControls(where, logger)
             RefreshSaveDropdown(State.SelectedConfig)
 
             if logger then
-                logger.new("trash-can", "Deleted " .. selectedName, 3.5)
+                logger.new("trash-2", "Deleted " .. selectedName, 3.5)
             end
         end,
     })
