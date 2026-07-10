@@ -145,6 +145,247 @@ local NeverLose = {};
 
 NeverLose.BuiltInRegular = Font.new('rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json',Enum.FontWeight.Regular,Enum.FontStyle.Normal);
 NeverLose.BuiltInBold = Font.new('rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json',Enum.FontWeight.Bold,Enum.FontStyle.Normal);
+NeverLose.IconModuleUrl = "https://raw.githubusercontent.com/deividcomsono/lucide-roblox-direct/refs/heads/main/source.lua";
+NeverLose.LucideAliases = {
+	["chevron-large-right"] = "chevron-right",
+	["chevron-small-down"] = "chevron-down",
+	["crosshairs"] = "crosshair",
+	["gear"] = "settings",
+	["magnifying-glass"] = "search",
+	["three-dots-horizontal"] = "ellipsis",
+};
+local ZeroVector2 = Vector2.zero or Vector2.new(0,0);
+
+local function IsTextIconObject(Object)
+	return Object and (Object:IsA("TextLabel") or Object:IsA("TextButton") or Object:IsA("TextBox"));
+end
+
+local function NormalizeIconName(Icon)
+	if typeof(Icon) ~= "string" then
+		return nil;
+	end;
+
+	local Normalized = string.lower(Icon);
+
+	if string.sub(Normalized , -5) == "-bold" then
+		Normalized = string.sub(Normalized , 1 , -6);
+	end;
+
+	return Normalized;
+end
+
+local function ResolveLocalIconAsset(Icon)
+	if typeof(Icon) ~= "string" or not getcustomasset or not isfile then
+		return nil;
+	end;
+
+	if not isfile(Icon) then
+		return nil;
+	end;
+
+	local Success , Asset = pcall(getcustomasset , Icon);
+
+	if Success then
+		return Asset;
+	end;
+
+	return nil;
+end
+
+local function SyncImageIcon(TextObject)
+	if not IsTextIconObject(TextObject) then
+		return;
+	end;
+
+	local ImageIcon = TextObject:FindFirstChild("__NeverLoseIconImage");
+
+	if not ImageIcon or not ImageIcon:IsA("ImageLabel") then
+		return;
+	end;
+
+	ImageIcon.ImageTransparency = TextObject.TextTransparency;
+	ImageIcon.ZIndex = TextObject.ZIndex;
+	ImageIcon.Visible = TextObject.Visible and ImageIcon.Image ~= "";
+	ImageIcon.ImageColor3 = ImageIcon:GetAttribute("PreserveOriginalColor") and Color3.new(1,1,1) or TextObject.TextColor3;
+end
+
+local function EnsureImageIcon(TextObject)
+	if not IsTextIconObject(TextObject) then
+		return nil;
+	end;
+
+	local ImageIcon = TextObject:FindFirstChild("__NeverLoseIconImage");
+
+	if ImageIcon and ImageIcon:IsA("ImageLabel") then
+		return ImageIcon;
+	end;
+
+	ImageIcon = Instance.new("ImageLabel");
+	ImageIcon.Name = "__NeverLoseIconImage";
+	ImageIcon.AnchorPoint = Vector2.new(0.5,0.5);
+	ImageIcon.BackgroundTransparency = 1;
+	ImageIcon.Position = UDim2.fromScale(0.5,0.5);
+	ImageIcon.ScaleType = Enum.ScaleType.Fit;
+	ImageIcon.Size = UDim2.fromScale(1,1);
+	ImageIcon.Visible = false;
+	ImageIcon.Parent = TextObject;
+
+	local Sync = LPH_NO_VIRTUALIZE(function()
+		SyncImageIcon(TextObject);
+	end);
+
+	NeverLose:AddSignal(TextObject:GetPropertyChangedSignal("TextColor3"):Connect(Sync));
+	NeverLose:AddSignal(TextObject:GetPropertyChangedSignal("TextTransparency"):Connect(Sync));
+	NeverLose:AddSignal(TextObject:GetPropertyChangedSignal("ZIndex"):Connect(Sync));
+	NeverLose:AddSignal(TextObject:GetPropertyChangedSignal("Visible"):Connect(Sync));
+
+	Sync();
+
+	return ImageIcon;
+end
+
+function NeverLose:SetIconModule(Module)
+	if typeof(Module) == "table" and typeof(Module.GetAsset) == "function" then
+		self.IconModule = Module;
+		self.IconModuleAttempted = true;
+	end;
+end;
+
+function NeverLose:EnsureIconModule()
+	if self.IconModule then
+		return self.IconModule;
+	end;
+
+	if self.IconModuleAttempted then
+		return nil;
+	end;
+
+	self.IconModuleAttempted = true;
+
+	local Loader = loadstring or (getgenv and getgenv().loadstring);
+
+	if typeof(Loader) ~= "function" then
+		return nil;
+	end;
+
+	local Success , Module = pcall(function()
+		return Loader(game:HttpGet(self.IconModuleUrl))();
+	end);
+
+	if Success and typeof(Module) == "table" and typeof(Module.GetAsset) == "function" then
+		self.IconModule = Module;
+	end;
+
+	return self.IconModule;
+end
+
+function NeverLose:GetLucideIcon(Icon)
+	local Module = self:EnsureIconModule();
+	local Normalized = NormalizeIconName(Icon);
+
+	if not Module or not Normalized or Normalized == "" then
+		return nil;
+	end;
+
+	local Candidates = {Normalized};
+	local Alias = self.LucideAliases[Normalized];
+
+	if Alias and Alias ~= Normalized then
+		table.insert(Candidates , Alias);
+	end;
+
+	for _ , Name in ipairs(Candidates) do
+		local Success , IconData = pcall(Module.GetAsset , Name);
+
+		if Success and IconData then
+			return IconData;
+		end;
+	end;
+
+	return nil;
+end
+
+function NeverLose:GetCustomIcon(Icon)
+	if Icon == nil or Icon == false then
+		return nil;
+	end;
+
+	if typeof(Icon) == "number" or tonumber(Icon) then
+		return {
+			Url = string.format("rbxassetid://%s" , tostring(Icon)),
+			ImageRectOffset = ZeroVector2,
+			ImageRectSize = ZeroVector2,
+			Custom = true,
+		};
+	end;
+
+	if typeof(Icon) ~= "string" or Icon == "" then
+		return nil;
+	end;
+
+	if string.find(Icon , "://" , 1 , true) then
+		return {
+			Url = Icon,
+			ImageRectOffset = ZeroVector2,
+			ImageRectSize = ZeroVector2,
+			Custom = true,
+		};
+	end;
+
+	local LocalAsset = ResolveLocalIconAsset(Icon);
+
+	if LocalAsset then
+		return {
+			Url = LocalAsset,
+			ImageRectOffset = ZeroVector2,
+			ImageRectSize = ZeroVector2,
+			Custom = true,
+		};
+	end;
+
+	return self:GetLucideIcon(Icon);
+end
+
+function NeverLose:ClearImageIcon(TextObject)
+	if not IsTextIconObject(TextObject) then
+		return;
+	end;
+
+	local ImageIcon = TextObject:FindFirstChild("__NeverLoseIconImage");
+
+	if not ImageIcon or not ImageIcon:IsA("ImageLabel") then
+		return;
+	end;
+
+	ImageIcon.Image = "";
+	ImageIcon.ImageRectOffset = ZeroVector2;
+	ImageIcon.ImageRectSize = ZeroVector2;
+	ImageIcon.Visible = false;
+	ImageIcon:SetAttribute("PreserveOriginalColor" , false);
+end
+
+function NeverLose:SetImageIcon(TextObject , IconData)
+	if not IsTextIconObject(TextObject) or not IconData then
+		return false;
+	end;
+
+	local ImageIcon = EnsureImageIcon(TextObject);
+
+	if not ImageIcon then
+		return false;
+	end;
+
+	ImageIcon.Image = IconData.Url or "";
+	ImageIcon.ImageRectOffset = IconData.ImageRectOffset or ZeroVector2;
+	ImageIcon.ImageRectSize = IconData.ImageRectSize or ZeroVector2;
+	ImageIcon:SetAttribute("PreserveOriginalColor" , IconData.Custom == true);
+	TextObject.Text = "";
+
+	SyncImageIcon(TextObject);
+
+	return true;
+end
+
 local function ResolveFont(name, fallback)
 	local ok, value = pcall(function()
 		return Enum.Font[name]
@@ -221,19 +462,19 @@ local function NormalizeDescriptionText(value)
 	return text
 end
 
-NeverLose.FontRegularEnum = ResolveFont("BuilderSans", Enum.Font.Gotham);
-NeverLose.FontMediumEnum = ResolveFont("BuilderSansMedium", Enum.Font.GothamMedium);
-NeverLose.FontBoldEnum = ResolveFont("BuilderSansBold", Enum.Font.GothamBold);
+NeverLose.FontRegularEnum = Enum.Font.Gotham;
+NeverLose.FontMediumEnum = Enum.Font.GothamMedium;
+NeverLose.FontBoldEnum = Enum.Font.GothamBold;
 NeverLose.FontRegular = NeverLose.FontRegularEnum;
 NeverLose.FontMedium = NeverLose.FontMediumEnum;
 NeverLose.FontBold = NeverLose.FontBoldEnum;
-NeverLose.FontRegularFace = CreateFontFace(12187370000, Enum.FontWeight.Regular, Enum.FontStyle.Normal, NeverLose.FontRegularEnum);
-NeverLose.FontMediumFace = CreateFontFace(12187370000, Enum.FontWeight.Regular, Enum.FontStyle.Normal, NeverLose.FontMediumEnum);
-NeverLose.FontBoldFace = CreateFontFace(12187370000, Enum.FontWeight.Regular, Enum.FontStyle.Normal, NeverLose.FontBoldEnum);
-NeverLose.SectionColor = Color3.fromRGB(3, 6, 45);
-NeverLose.FieldColor = Color3.fromRGB(6, 10, 72);
-NeverLose.TrackColor = Color3.fromRGB(10, 18, 108);
-NeverLose.StrokeColor = Color3.fromRGB(22, 32, 150);
+NeverLose.FontRegularFace = Font.fromEnum(NeverLose.FontRegularEnum);
+NeverLose.FontMediumFace = Font.fromEnum(NeverLose.FontMediumEnum);
+NeverLose.FontBoldFace = Font.fromEnum(NeverLose.FontBoldEnum);
+NeverLose.SectionColor = Color3.fromRGB(18, 21, 29);
+NeverLose.FieldColor = Color3.fromRGB(25, 29, 39);
+NeverLose.TrackColor = Color3.fromRGB(37, 42, 54);
+NeverLose.StrokeColor = Color3.fromRGB(61, 68, 82);
 NeverLose.GlobalSignals = {};
 NeverLose.UnloadEnabled = false;
 local cloneref: cloneref = cloneref or function(f) return f end;
@@ -274,8 +515,8 @@ NeverLose.Scales = {
 NeverLose.IconColor = Color3.fromRGB(255, 255, 255);
 NeverLose.ScreenGui = GlobalWindow;
 NeverLose.Flags = {};
-NeverLose.AccentColor = Color3.fromRGB(0, 0, 204);
-NeverLose.MainColor = Color3.fromRGB(2, 2, 20);
+NeverLose.AccentColor = Color3.fromRGB(255, 0, 0);
+NeverLose.MainColor = Color3.fromRGB(8, 8, 13);
 NeverLose.RegisiteryColor = {};
 NeverLose.NameRegisitry = {};
 NeverLose.IsMosueOverOtherFrame = false;
@@ -880,19 +1121,38 @@ NeverLose.CreateSignal = LPH_NO_VIRTUALIZE(function(self , DefaultValue)
 	return bind;
 end);
 
-NeverLose.SetIconMode = LPH_NO_VIRTUALIZE(function(self , Label: TextLabel , Icon: string)
-	local useBold = string.lower(string.sub(Icon , -5)) == '-bold';
+NeverLose.SetIconMode = LPH_NO_VIRTUALIZE(function(self , Label , Icon , PreferBold)
+	if not IsTextIconObject(Label) then
+		return false;
+	end;
+
+	local IconData = self:GetCustomIcon(Icon);
+
+	if IconData then
+		return self:SetImageIcon(Label , IconData);
+	end;
+
+	self:ClearImageIcon(Label);
+
+	local Text = tostring(Icon or "");
+	local useBold = PreferBold == true or string.lower(string.sub(Text , -5)) == '-bold';
 
 	if useBold then
-		Label.Text = Icon:sub(1,-6);
+		Label.Text = string.sub(Text , -5) == "-bold" and Text:sub(1,-6) or Text;
 		Label.FontFace = NeverLose.BuiltInBold;
 	else
-		Label.Text = Icon;
+		Label.Text = Text;
 		Label.FontFace = NeverLose.BuiltInRegular;
 	end;
+
+	return false;
 end);
 
 function NeverLose:GetIconFont(icon: string)
+	if typeof(icon) ~= "string" then
+		return NeverLose.BuiltInRegular;
+	end;
+
 	local useBold = string.lower(string.sub(icon , -5)) == '-bold';
 
 	if useBold then
@@ -1502,7 +1762,7 @@ function NeverLose:CreateColorPicker(HandleFrame: Frame)
 	ApplyTextFont(RGBLabel, NeverLose.FontBoldFace, NeverLose.FontBold)
 	RGBLabel.Text = "#FFFFFF"
 	RGBLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	RGBLabel.TextSize = 12.000
+	RGBLabel.TextSize = 14.000
 	RGBLabel.TextTransparency = 0.400
 	RGBLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -1950,7 +2210,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		ApplyTextFont(ValueLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		ValueLabel.Text = tostring(Config.Default)..tostring(Config.Type);
 		ValueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		ValueLabel.TextSize = 11.000
+		ValueLabel.TextSize = 14.000
 		ValueLabel.ClearTextOnFocus = false;
 		ValueLabel.TextTransparency = 0.250
 
@@ -2204,12 +2464,11 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		Icon.Position = UDim2.new(0.5, 0, 0.5, 0)
 		Icon.Size = UDim2.new(1, 0, 1, 0)
 		Icon.ZIndex = ZINdex + 14
-		Icon.FontFace = NeverLose.BuiltInBold
-		Icon.Text = (GearIcon == 1 and 'gear') or (GearIcon == 2 and 'chevron-large-right') or "three-dots-horizontal";
 		Icon.TextColor3 = Color3.fromRGB(223, 223, 223)
-		Icon.TextSize = 16.000
+		Icon.TextSize = 15.000
 		Icon.TextTransparency = 0.400
 		Icon.TextWrapped = true
+		NeverLose:SetIconMode(Icon , (GearIcon == 1 and 'settings') or (GearIcon == 2 and 'chevron-right') or "ellipsis" , true)
 
 		UICorner.CornerRadius = UDim.new(0, 4)
 		UICorner.Parent = Option
@@ -2450,7 +2709,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		ApplyTextFont(ValueLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		ValueLabel.Text = NeverLose:KeyCodeToStr(Config.Default or "None")
 		ValueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		ValueLabel.TextSize = 11.000
+		ValueLabel.TextSize = 14.000
 		ValueLabel.TextTransparency = 0.350
 
 		KeybindLib.SetRender = LPH_NO_VIRTUALIZE(function(value)
@@ -2605,7 +2864,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		TextBox.PlaceholderText = Config.Placeholder
 		TextBox.Text = tostring(Config.Default)
 		TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-		TextBox.TextSize = 11.000
+		TextBox.TextSize = 14.000
 		TextBox.TextTransparency = 0.250
 		TextBox.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2708,12 +2967,11 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		DropdownIcon.Position = UDim2.new(1, -6, 0.5, 0)
 		DropdownIcon.Size = UDim2.new(0, 18, 0, 18)
 		DropdownIcon.ZIndex = ZINdex + 14
-		DropdownIcon.FontFace = NeverLose.BuiltInBold
-		DropdownIcon.Text = "chevron-small-down"
 		DropdownIcon.TextColor3 = Color3.fromRGB(223, 223, 223)
-		DropdownIcon.TextSize = 16.000
+		DropdownIcon.TextSize = 15.000
 		DropdownIcon.TextTransparency = 0.300
 		DropdownIcon.TextWrapped = true
+		NeverLose:SetIconMode(DropdownIcon , "chevron-down" , true)
 
 		UICorner.CornerRadius = UDim.new(0, 6)
 		UICorner.Parent = Dropdown
@@ -2737,7 +2995,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		ApplyTextFont(BasedLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
 		BasedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		BasedLabel.TextSize = 12.000
+		BasedLabel.TextSize = 14.000
 		BasedLabel.TextTransparency = 0.380
 		BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2868,7 +3126,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			DropdownSearchBox.PlaceholderText = "Search..."
 			DropdownSearchBox.Text = ""
 			DropdownSearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-			DropdownSearchBox.TextSize = 11
+			DropdownSearchBox.TextSize = 14
 			DropdownSearchBox.TextTransparency = 0.25
 			DropdownSearchBox.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2880,12 +3138,11 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			DropdownSearchIcon.Position = UDim2.new(1, -8, 0, 15)
 			DropdownSearchIcon.Size = UDim2.new(0, 14, 0, 14)
 			DropdownSearchIcon.ZIndex = ZINdex + 129
-			DropdownSearchIcon.FontFace = NeverLose.BuiltInBold
-			DropdownSearchIcon.Text = "magnifying-glass"
 			DropdownSearchIcon.TextColor3 = Color3.fromRGB(223, 223, 223)
-			DropdownSearchIcon.TextSize = 13
+			DropdownSearchIcon.TextSize = 14
 			DropdownSearchIcon.TextTransparency = 0.5
 			DropdownSearchIcon.TextWrapped = true
+			NeverLose:SetIconMode(DropdownSearchIcon , "search" , true)
 
 			DropdownSearchCorner.CornerRadius = UDim.new(0, 4)
 			DropdownSearchCorner.Parent = DropdownSearchBox
@@ -3050,7 +3307,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				ApplyTextFont(ItemLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 				ItemLabel.Text = tostring(Value);
 				ItemLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-				ItemLabel.TextSize = 13.000
+				ItemLabel.TextSize = 14.000
 				ItemLabel.TextTransparency = 0.280
 				ItemLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -3074,12 +3331,11 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 					Icon.Position = UDim2.new(0, 4, 0.5, 0)
 					Icon.Size = UDim2.new(0, 18, 0, 18)
 					Icon.ZIndex = ZINdex + 1259
-					Icon.FontFace = NeverLose.BuiltInBold;
-					Icon.Text = "check"
 					Icon.TextColor3 = Color3.fromRGB(223, 223, 223)
-					Icon.TextSize = 16.000
+					Icon.TextSize = 15.000
 					Icon.TextTransparency = 1
 					Icon.TextWrapped = true;
+					NeverLose:SetIconMode(Icon , "check" , true)
 
 					local VisiblewOfMult = LPH_NO_VIRTUALIZE(function()
 						if DropdownLib.IsMatch(Value) then
@@ -3360,7 +3616,7 @@ function NeverLose:CreateToolTips(Container: Frame , Name: string , Content: str
 	ApplyTextFont(TooltipContent, NeverLose.FontBoldFace, NeverLose.FontBold)
 	TooltipContent.Text = Content
 	TooltipContent.TextColor3 = Color3.fromRGB(255, 255, 255)
-	TooltipContent.TextSize = 12.000
+	TooltipContent.TextSize = 14.000
 	TooltipContent.TextTransparency = 0.650
 	TooltipContent.TextXAlignment = Enum.TextXAlignment.Left
 	TooltipContent.TextYAlignment = Enum.TextYAlignment.Top
@@ -3522,7 +3778,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		DescriptionLabel.Text = DescriptionText and tostring(DescriptionText) or ""
 		ApplyTextFont(DescriptionLabel, NeverLose.FontRegularFace, NeverLose.FontRegular)
 		DescriptionLabel.TextColor3 = Color3.fromRGB(220, 224, 232)
-		DescriptionLabel.TextSize = 11.000
+		DescriptionLabel.TextSize = 14.000
 		DescriptionLabel.TextTransparency = 0.380
 		DescriptionLabel.TextWrapped = true
 		DescriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -3717,7 +3973,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		DescriptionLabel.Text = Config.Description and tostring(Config.Description) or ""
 		ApplyTextFont(DescriptionLabel, NeverLose.FontRegularFace, NeverLose.FontRegular)
 		DescriptionLabel.TextColor3 = Color3.fromRGB(220, 224, 232)
-		DescriptionLabel.TextSize = 11.000
+		DescriptionLabel.TextSize = 14.000
 		DescriptionLabel.TextTransparency = 0.340
 		DescriptionLabel.TextWrapped = true
 		DescriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -3750,12 +4006,11 @@ function idx:AddLabel(Name: string, Warp, Description)
 			Icon.Position = UDim2.new(0, 10, 0, 7)
 			Icon.Size = UDim2.new(0, 16, 0, 16)
 			Icon.ZIndex = LayerIndex + 9
-			Icon.FontFace = NeverLose.BuiltInBold
-			Icon.Text = Config.Icon
 			Icon.TextColor3 = Color3.fromRGB(223, 223, 223)
 			Icon.TextSize = 15.000
 			Icon.TextTransparency = 0.220
 			Icon.TextWrapped = true
+			NeverLose:SetIconMode(Icon , Config.Icon , true)
 		end
 
 		local UpdateQuery = LPH_NO_VIRTUALIZE(function()
@@ -3841,7 +4096,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 
 		function Button:SetIcon(t)
 			if Icon then
-				Icon.Text = t
+				NeverLose:SetIconMode(Icon , t , true)
 			end
 		end;
 
@@ -3937,7 +4192,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		ApplyTextFont(UserLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		UserLabel.Text = Name or 'User'
 		UserLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		UserLabel.TextSize = 13.000
+		UserLabel.TextSize = 14.000
 		UserLabel.TextTransparency = 0.200
 		UserLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -3982,7 +4237,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		ApplyTextFont(UserStatusLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		UserStatusLabel.Text = Expires or 'Never'
 		UserStatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		UserStatusLabel.TextSize = 13.000
+		UserStatusLabel.TextSize = 14.000
 		UserStatusLabel.TextTransparency = 0.200
 		UserStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -4377,7 +4632,7 @@ function NeverLose:CreateWindow(Config)
 		ApplyTextFont(WindowName, NeverLose.FontBoldFace, NeverLose.FontBold)
 	WindowName.Text = Window.Name
 	WindowName.TextColor3 = Color3.fromRGB(255, 255, 255)
-	WindowName.TextSize = 18.000
+	WindowName.TextSize = 15.000
 	WindowName.TextXAlignment = Enum.TextXAlignment.Left
 
 	WindowContent.Name = NeverLose.RandomString();
@@ -4490,7 +4745,7 @@ function NeverLose:CreateWindow(Config)
 	ApplyTextFont(ExpireLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 	ExpireLabel.Text = "never"
 	ExpireLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	ExpireLabel.TextSize = 10.000
+	ExpireLabel.TextSize = 14.000
 	ExpireLabel.TextTransparency = 0.650
 	ExpireLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -4515,11 +4770,10 @@ function NeverLose:CreateWindow(Config)
 	UserSettingButton.Position = UDim2.new(1, -7, 0.5, 0)
 	UserSettingButton.Size = UDim2.new(0, 25, 0, 25)
 	UserSettingButton.ZIndex = 7
-	UserSettingButton.FontFace = NeverLose.BuiltInBold
-	UserSettingButton.Text = "chevron-large-right"
 	UserSettingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	UserSettingButton.TextSize = 13.000
+	UserSettingButton.TextSize = 14.000
 	UserSettingButton.TextTransparency = 0.5
+	NeverLose:SetIconMode(UserSettingButton , "chevron-right" , true)
 
 	NeverLose:AddSignal(BottomFrame.MouseEnter:Connect(LPH_NO_VIRTUALIZE(function()
 		NeverLose.PlayAnimate(UserSettingButton,SlowyTween , {
@@ -4594,12 +4848,11 @@ function NeverLose:CreateWindow(Config)
 	SearchIcon.Position = UDim2.new(0, 2, 0.5, 0)
 	SearchIcon.Size = UDim2.new(0, 25, 0, 25)
 	SearchIcon.ZIndex = 12
-	SearchIcon.FontFace = NeverLose.BuiltInBold
-	SearchIcon.Text = "magnifying-glass"
 	SearchIcon.TextColor3 = Color3.fromRGB(223, 223, 223)
 	SearchIcon.TextSize = 14.000
 	SearchIcon.TextTransparency = 0.45
 	SearchIcon.TextWrapped = true
+	NeverLose:SetIconMode(SearchIcon , "search" , true)
 
 	SearchBox.Name = NeverLose.RandomString();
 	SearchBox.Parent = SearchFrame
@@ -4617,7 +4870,7 @@ function NeverLose:CreateWindow(Config)
 	SearchBox.PlaceholderText = "Search"
 	SearchBox.Text = ""
 	SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-	SearchBox.TextSize = 13.000
+	SearchBox.TextSize = 14.000
 	SearchBox.TextTransparency = 1
 	SearchBox.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -4806,7 +5059,7 @@ function NeverLose:CreateWindow(Config)
 		ApplyTextFont(TabLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		TabLabel.Text = Name
 		TabLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		TabLabel.TextSize = 11.000
+		TabLabel.TextSize = 14.000
 		TabLabel.TextTransparency = 0.500
 		TabLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -4829,7 +5082,7 @@ function NeverLose:CreateWindow(Config)
 
 	function Window:AddTab(Config)
 		Config = NeverLose:ProcessParams(Config , {
-			Icon = "crosshairs",
+			Icon = "crosshair",
 			Name = "Tab",
 			Type = "Double"
 		});
@@ -4867,11 +5120,10 @@ function NeverLose:CreateWindow(Config)
 		TabIcon.Position = UDim2.new(0, 2, 0.5, 0)
 		TabIcon.Size = UDim2.new(0, 25, 0, 25)
 		TabIcon.ZIndex = 9
-		TabIcon.FontFace = NeverLose.BuiltInBold
-		TabIcon.Text = Config.Icon;
 		TabIcon.TextColor3 = NeverLose.AccentColor
-		TabIcon.TextSize = 16.000
+		TabIcon.TextSize = 15.000
 		TabIcon.TextWrapped = true
+		NeverLose:SetIconMode(TabIcon , Config.Icon , true)
 
 		TabContentLabel.Name = NeverLose.RandomString();
 		TabContentLabel.Parent = TabButton
@@ -4887,7 +5139,7 @@ function NeverLose:CreateWindow(Config)
 		ApplyTextFont(TabContentLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		TabContentLabel.Text = Config.Name
 		TabContentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		TabContentLabel.TextSize = 12.000
+		TabContentLabel.TextSize = 14.000
 		TabContentLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 		local TabFrame = Instance.new("Frame")
@@ -5178,7 +5430,7 @@ function NeverLose:CreateWindow(Config)
 			ApplyTextFont(SectionLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 			SectionLabel.Text = Config.Name
 			SectionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-			SectionLabel.TextSize = 12.000
+			SectionLabel.TextSize = 14.000
 			SectionLabel.TextTransparency = 0.380
 			SectionLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -5473,12 +5725,11 @@ function NeverLose:CreateWindow(Config)
 			Icon.Position = UDim2.new(0, 10, 0.5, 0)
 			Icon.Size = UDim2.new(0, 20, 0, 20)
 			Icon.ZIndex = 17
-			Icon.FontFace = NeverLose.BuiltInBold;
-			Icon.Text = IconStr
 			Icon.TextColor3 = NeverLose.AccentColor
-			Icon.TextSize = 18.000
+			Icon.TextSize = 15.000
 			Icon.TextTransparency = 0.250
 			Icon.TextWrapped = true
+			NeverLose:SetIconMode(Icon , IconStr , true)
 
 			InnerBlock.Update = LPH_NO_VIRTUALIZE(function(value)
 				local size = GetTextObjectBounds(Content, Vector2.new(math.huge,math.huge))
@@ -5660,7 +5911,7 @@ function NeverLose:CreateNotification()
 		ApplyTextFont(NotifyName, NeverLose.FontBoldFace, NeverLose.FontBold)
 		NotifyName.Text = Config.Title
 		NotifyName.TextColor3 = Color3.fromRGB(255, 255, 255)
-		NotifyName.TextSize = 17.000
+		NotifyName.TextSize = 15.000
 		NotifyName.TextXAlignment = Enum.TextXAlignment.Left
 
 		NotifyContent.Name = NeverLose.RandomString();
@@ -5766,7 +6017,7 @@ function NeverLose:CreateLogger()
 	function Logging.new(IconStr: string , Message: string , Duration: number)
 		Duration = Duration or 3;
 		Message = Message or "Log";
-		IconStr = IconStr or "crosshairs";
+		IconStr = IconStr or "crosshair";
 
 		local LogFrame = Instance.new("Frame")
 		local UICorner = Instance.new("UICorner")
@@ -5809,7 +6060,7 @@ function NeverLose:CreateLogger()
 		ApplyTextFont(LogContent, NeverLose.FontBoldFace, NeverLose.FontBold)
 		LogContent.Text = Message
 		LogContent.TextColor3 = Color3.fromRGB(255, 255, 255)
-		LogContent.TextSize = 12.000
+		LogContent.TextSize = 14.000
 		LogContent.TextTransparency = 1--0.250
 		LogContent.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -5836,12 +6087,11 @@ function NeverLose:CreateLogger()
 		Icon.Position = UDim2.new(0, 7, 0, 3)
 		Icon.Size = UDim2.new(0, 15, 0, 15)
 		Icon.ZIndex = 133
-		Icon.FontFace = NeverLose.BuiltInBold
-		Icon.Text = IconStr
 		Icon.TextColor3 = Color3.fromRGB(223, 223, 223)
-		Icon.TextSize = 13.000
+		Icon.TextSize = 14.000
 		Icon.TextTransparency = 1--0.250
 		Icon.TextWrapped = true
+		NeverLose:SetIconMode(Icon , IconStr , true)
 
 		local size = GetTextObjectBounds(LogContent, Vector2.new(math.huge,math.huge));
 
@@ -5934,7 +6184,7 @@ function NeverLose:CreateIndicator()
 	function Indicators.new(Config)
 		Config = NeverLose:ProcessParams(Config , {
 			Name = "Indicator",
-			Icon = 'crosshairs',
+			Icon = 'crosshair',
 			Color = 'Red',
 		});
 
@@ -6003,12 +6253,11 @@ function NeverLose:CreateIndicator()
 		Icon.Position = UDim2.new(0, 10, 0.5, 0)
 		Icon.Size = UDim2.new(0, 25, 0, 25)
 		Icon.ZIndex = 17
-		Icon.FontFace = NeverLose.BuiltInBold;
-		Icon.Text = Config.Icon
 		Icon.TextColor3 = Color3.fromRGB(186, 186, 186)
-		Icon.TextSize = 21.000
+		Icon.TextSize = 15.000
 		Icon.TextTransparency = 1
 		Icon.TextWrapped = true
+		NeverLose:SetIconMode(Icon , Config.Icon , true)
 
 		Content.Name = NeverLose.RandomString();
 		Content.Parent = IndicatorItem
@@ -6024,7 +6273,7 @@ function NeverLose:CreateIndicator()
 		ApplyTextFont(Content, NeverLose.FontBoldFace, NeverLose.FontBold)
 		Content.Text = Config.Name
 		Content.TextColor3 = Color3.fromRGB(186, 186, 186)
-		Content.TextSize = 20.000
+		Content.TextSize = 15.000
 		Content.TextTransparency = 1
 		Content.TextXAlignment = Enum.TextXAlignment.Left
 
