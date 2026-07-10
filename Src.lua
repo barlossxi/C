@@ -157,13 +157,83 @@ local function ResolveFont(name, fallback)
 	return fallback
 end
 
-NeverLose.FontRegular = ResolveFont("BuilderSans", Enum.Font.Gotham);
-NeverLose.FontMedium = ResolveFont("BuilderSansMedium", Enum.Font.GothamMedium);
-NeverLose.FontBold = ResolveFont("BuilderSansBold", Enum.Font.GothamBold);
-NeverLose.SectionColor = Color3.fromRGB(18, 21, 29);
-NeverLose.FieldColor = Color3.fromRGB(25, 29, 39);
-NeverLose.TrackColor = Color3.fromRGB(37, 42, 54);
-NeverLose.StrokeColor = Color3.fromRGB(61, 68, 82);
+local function CreateFontFace(assetId, weight, style, fallbackEnum)
+	local ok, value = pcall(function()
+		return Font.fromId(assetId, weight, style)
+	end)
+
+	if ok and value then
+		return value
+	end
+
+	return Font.fromEnum(fallbackEnum)
+end
+
+local function ApplyTextFont(textObject, fontFace, fallbackEnum)
+	textObject.Font = fallbackEnum or Enum.Font.Gotham
+
+	pcall(function()
+		textObject.FontFace = fontFace
+	end)
+end
+
+local function GetTextBounds(text, textSize, fontEnum, frameSize, fontFace)
+	local safeFrameSize = frameSize or Vector2.new(math.huge, math.huge)
+	local textService = game:GetService('TextService')
+
+	if fontFace then
+		local params = Instance.new("GetTextBoundsParams")
+		params.Text = tostring(text or "")
+		params.Size = textSize
+		params.Width = safeFrameSize.X == math.huge and 100000 or math.max(0, safeFrameSize.X)
+		params.Font = fontFace
+
+		local success, bounds = pcall(function()
+			return textService:GetTextBoundsAsync(params)
+		end)
+
+		params:Destroy()
+
+		if success and bounds then
+			return bounds
+		end
+	end
+
+	return textService:GetTextSize(tostring(text or ""), textSize, fontEnum or Enum.Font.Gotham, safeFrameSize)
+end
+
+local function GetTextObjectBounds(textObject, frameSize)
+	return GetTextBounds(textObject.Text, textObject.TextSize, textObject.Font, frameSize, textObject.FontFace)
+end
+
+local function NormalizeDescriptionText(value)
+	if value == nil or value == false then
+		return false
+	end
+
+	local text = tostring(value)
+	text = string.gsub(text, "^%s*(.-)%s*$", "%1")
+
+	if text == "" then
+		return false
+	end
+
+	return text
+end
+
+NeverLose.FontRegularEnum = ResolveFont("BuilderSans", Enum.Font.Gotham);
+NeverLose.FontMediumEnum = ResolveFont("BuilderSansMedium", Enum.Font.GothamMedium);
+NeverLose.FontBoldEnum = ResolveFont("BuilderSansBold", Enum.Font.GothamBold);
+NeverLose.FontRegular = NeverLose.FontRegularEnum;
+NeverLose.FontMedium = NeverLose.FontMediumEnum;
+NeverLose.FontBold = NeverLose.FontBoldEnum;
+NeverLose.FontRegularFace = CreateFontFace(12187370000, Enum.FontWeight.Regular, Enum.FontStyle.Normal, NeverLose.FontRegularEnum);
+NeverLose.FontMediumFace = CreateFontFace(12187370000, Enum.FontWeight.Regular, Enum.FontStyle.Normal, NeverLose.FontMediumEnum);
+NeverLose.FontBoldFace = CreateFontFace(12187370000, Enum.FontWeight.Regular, Enum.FontStyle.Normal, NeverLose.FontBoldEnum);
+NeverLose.SectionColor = Color3.fromRGB(3, 6, 45);
+NeverLose.FieldColor = Color3.fromRGB(6, 10, 72);
+NeverLose.TrackColor = Color3.fromRGB(10, 18, 108);
+NeverLose.StrokeColor = Color3.fromRGB(22, 32, 150);
 NeverLose.GlobalSignals = {};
 NeverLose.UnloadEnabled = false;
 local cloneref: cloneref = cloneref or function(f) return f end;
@@ -204,8 +274,8 @@ NeverLose.Scales = {
 NeverLose.IconColor = Color3.fromRGB(255, 255, 255);
 NeverLose.ScreenGui = GlobalWindow;
 NeverLose.Flags = {};
-NeverLose.AccentColor = Color3.fromRGB(255, 0, 0);
-NeverLose.MainColor = Color3.fromRGB(8, 8, 13);
+NeverLose.AccentColor = Color3.fromRGB(0, 0, 204);
+NeverLose.MainColor = Color3.fromRGB(2, 2, 20);
 NeverLose.RegisiteryColor = {};
 NeverLose.NameRegisitry = {};
 NeverLose.IsMosueOverOtherFrame = false;
@@ -1428,7 +1498,8 @@ function NeverLose:CreateColorPicker(HandleFrame: Frame)
 	RGBLabel.Position = UDim2.new(0, 10, 0, 217)
 	RGBLabel.Size = UDim2.new(1, -20, 0, 15)
 	RGBLabel.ZIndex = ZIndex + 127
-	RGBLabel.Font = Enum.Font.GothamBold
+	RGBLabel.Font = NeverLose.FontBold
+	ApplyTextFont(RGBLabel, NeverLose.FontBoldFace, NeverLose.FontBold)
 	RGBLabel.Text = "#FFFFFF"
 	RGBLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	RGBLabel.TextSize = 12.000
@@ -1798,7 +1869,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			return (Config.Default - Config.Min) / (Config.Max - Config.Min);
 		end);
 
-		local FullNumSize = TextService:GetTextSize(string.rep("0",(Config.Rounding + #tostring(Config.Max))+1)..tostring(Config.Type),11,NeverLose.FontMedium,Vector2.new(math.huge,math.huge));
+		local FullNumSize = GetTextBounds(string.rep("0",(Config.Rounding + #tostring(Config.Max))+1)..tostring(Config.Type),11,NeverLose.FontMedium,Vector2.new(math.huge,math.huge),NeverLose.FontMediumFace);
 
 		SliderLib.MaximumSize = FullNumSize.X;
 
@@ -1806,7 +1877,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			local nszie = 0;
 
 			for i,ns in next , Config.Nums do
-				local size = TextService:GetTextSize(string.rep("m",string.len(tostring(ns))),11,NeverLose.FontMedium,Vector2.new(math.huge,math.huge));
+				local size = GetTextBounds(string.rep("m",string.len(tostring(ns))),11,NeverLose.FontMedium,Vector2.new(math.huge,math.huge),NeverLose.FontMediumFace);
 
 				if nszie < size.X then
 					nszie = size.X;
@@ -1876,6 +1947,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		ValueLabel.Size = UDim2.new(1, 0, 1, 0)
 		ValueLabel.ZIndex = ZINdex + 14
 		ValueLabel.Font = NeverLose.FontMedium
+		ApplyTextFont(ValueLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		ValueLabel.Text = tostring(Config.Default)..tostring(Config.Type);
 		ValueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		ValueLabel.TextSize = 11.000
@@ -2375,6 +2447,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		ValueLabel.Size = UDim2.new(1, 0, 1, 0)
 		ValueLabel.ZIndex = ZINdex + 14
 		ValueLabel.Font = NeverLose.FontMedium
+		ApplyTextFont(ValueLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		ValueLabel.Text = NeverLose:KeyCodeToStr(Config.Default or "None")
 		ValueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		ValueLabel.TextSize = 11.000
@@ -2409,7 +2482,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		end);
 
 		function KeybindLib:Update()
-			local size = TextService:GetTextSize(ValueLabel.Text,ValueLabel.TextSize,ValueLabel.Font,Vector2.new(math.huge,math.huge));
+			local size = GetTextObjectBounds(ValueLabel, Vector2.new(math.huge,math.huge));
 
 			NeverLose.PlayAnimate(Keybind , SlowyTween , {
 				Size = UDim2.new(0, size.X + 16, 0, 24)
@@ -2528,6 +2601,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		TextBox.ZIndex = ZINdex + 14
 		TextBox.ClearTextOnFocus = false
 		TextBox.Font = NeverLose.FontMedium
+		ApplyTextFont(TextBox, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		TextBox.PlaceholderText = Config.Placeholder
 		TextBox.Text = tostring(Config.Default)
 		TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -2660,6 +2734,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		BasedLabel.Size = UDim2.new(1, -30, 0, 16)
 		BasedLabel.ZIndex = ZINdex + 14
 		BasedLabel.Font = NeverLose.FontMedium
+		ApplyTextFont(BasedLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
 		BasedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		BasedLabel.TextSize = 12.000
@@ -2789,6 +2864,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 			DropdownSearchBox.ZIndex = ZINdex + 128
 			DropdownSearchBox.ClearTextOnFocus = false
 			DropdownSearchBox.Font = NeverLose.FontMedium
+			ApplyTextFont(DropdownSearchBox, NeverLose.FontMediumFace, NeverLose.FontMedium)
 			DropdownSearchBox.PlaceholderText = "Search..."
 			DropdownSearchBox.Text = ""
 			DropdownSearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -2971,6 +3047,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				ItemLabel.Size = UDim2.new(0,1, 0, 18)
 				ItemLabel.ZIndex = ZINdex + 1258
 				ItemLabel.Font = NeverLose.FontMedium
+				ApplyTextFont(ItemLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 				ItemLabel.Text = tostring(Value);
 				ItemLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 				ItemLabel.TextSize = 13.000
@@ -2979,7 +3056,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 
 				UICorner.CornerRadius = UDim.new(0, 10)
 				UICorner.Parent = ItemFrame
-				local sizetext = TextService:GetTextSize(ItemLabel.Text , ItemLabel.TextSize,ItemLabel.Font,Vector2.new(math.huge,math.huge));
+				local sizetext = GetTextObjectBounds(ItemLabel, Vector2.new(math.huge,math.huge));
 
 				DropdownLib.ExtentSize = math.max(DropdownLib.ExtentSize , sizetext.X);
 
@@ -3263,7 +3340,8 @@ function NeverLose:CreateToolTips(Container: Frame , Name: string , Content: str
 	TooltipName.Position = UDim2.new(0, 15, 0, 5)
 	TooltipName.Size = UDim2.new(0, 1, 0, 20)
 	TooltipName.ZIndex = 132
-	TooltipName.Font = Enum.Font.GothamBold
+	TooltipName.Font = NeverLose.FontBold
+	ApplyTextFont(TooltipName, NeverLose.FontBoldFace, NeverLose.FontBold)
 	TooltipName.Text = Name
 	TooltipName.TextColor3 = Color3.fromRGB(255, 255, 255)
 	TooltipName.TextSize = 15.000
@@ -3278,7 +3356,8 @@ function NeverLose:CreateToolTips(Container: Frame , Name: string , Content: str
 	TooltipContent.Position = UDim2.new(0, 15, 0, 30)
 	TooltipContent.Size = UDim2.new(0, 1, 0, 15)
 	TooltipContent.ZIndex = 132
-	TooltipContent.Font = Enum.Font.GothamBold
+	TooltipContent.Font = NeverLose.FontBold
+	ApplyTextFont(TooltipContent, NeverLose.FontBoldFace, NeverLose.FontBold)
 	TooltipContent.Text = Content
 	TooltipContent.TextColor3 = Color3.fromRGB(255, 255, 255)
 	TooltipContent.TextSize = 12.000
@@ -3289,8 +3368,8 @@ function NeverLose:CreateToolTips(Container: Frame , Name: string , Content: str
 	local ToolTip = {};
 
 	ToolTip.Update = LPH_NO_VIRTUALIZE(function()
-		local SizeName = TextService:GetTextSize(TooltipName.Text , TooltipName.TextSize , TooltipName.Font , Vector2.new(math.huge,math.huge));
-		local SizeContent = TextService:GetTextSize(TooltipContent.Text , TooltipContent.TextSize , TooltipContent.Font , Vector2.new(math.huge,math.huge));
+		local SizeName = GetTextObjectBounds(TooltipName, Vector2.new(math.huge,math.huge));
+		local SizeContent = GetTextObjectBounds(TooltipContent, Vector2.new(math.huge,math.huge));
 
 		local MaxX = math.max(SizeName.X , SizeContent.X) + 65;
 		local MaxY = SizeName.Y + SizeContent.Y + 30;
@@ -3395,10 +3474,11 @@ function idx:AddLabel(Name: string, Warp, Description)
 			LabelConfig = Warp;
 			Warp = LabelConfig.Warp;
 		else
-			LabelConfig.Description = Description;
+			LabelConfig.Description = Description == nil and false or Description;
 		end;
 
-		local DescriptionText = LabelConfig.Description;
+		LabelConfig.Description = NormalizeDescriptionText(LabelConfig.Description) or false;
+		local DescriptionText = LabelConfig.Description or "";
 		local BasedFrame = Instance.new("Frame")
 		local BasedLabel = Instance.new("TextLabel")
 		local DescriptionLabel = Instance.new("TextLabel")
@@ -3412,7 +3492,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		BasedFrame.BackgroundColor3 = NeverLose.FieldColor
 		BasedFrame.BackgroundTransparency = 1.000
 		BasedFrame.BorderSizePixel = 0
-		BasedFrame.Size = UDim2.new(1, 0, 0, 38)
+		BasedFrame.Size = UDim2.new(1, 0, 0, 34)
 		BasedFrame.ZIndex = LayerIndex + 8
 
 		local Query = NeverLose:AddQuery(BasedFrame, Name);
@@ -3424,6 +3504,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		BasedLabel.Size = UDim2.new(0, 1, 0, 18)
 		BasedLabel.ZIndex = LayerIndex + 9
 		BasedLabel.Font = NeverLose.FontMedium
+		ApplyTextFont(BasedLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		BasedLabel.Text = Name
 		BasedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		BasedLabel.TextSize = 14.000
@@ -3439,6 +3520,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		DescriptionLabel.ZIndex = LayerIndex + 9
 		DescriptionLabel.Font = NeverLose.FontRegular
 		DescriptionLabel.Text = DescriptionText and tostring(DescriptionText) or ""
+		ApplyTextFont(DescriptionLabel, NeverLose.FontRegularFace, NeverLose.FontRegular)
 		DescriptionLabel.TextColor3 = Color3.fromRGB(220, 224, 232)
 		DescriptionLabel.TextSize = 11.000
 		DescriptionLabel.TextTransparency = 0.380
@@ -3453,14 +3535,14 @@ function idx:AddLabel(Name: string, Warp, Description)
 		LineFrame.BackgroundColor3 = NeverLose.StrokeColor
 		LineFrame.BackgroundTransparency = 0.780
 		LineFrame.Position = UDim2.new(0.5, 0, 1, 0)
-		LineFrame.Size = UDim2.new(1, -20, 0, 1)
+		LineFrame.Size = UDim2.new(1, -24, 0, 1)
 		LineFrame.ZIndex = LayerIndex + 11
 
 		BasedHandler.Name = NeverLose.RandomString();
 		BasedHandler.Parent = BasedFrame
 		BasedHandler.AnchorPoint = Vector2.new(1, 0)
 		BasedHandler.BackgroundTransparency = 1.000
-		BasedHandler.Position = UDim2.new(1, -11, 0, 6)
+		BasedHandler.Position = UDim2.new(1, -15, 0, 5)
 		BasedHandler.Size = UDim2.new(0, 0, 0, 24)
 		BasedHandler.ZIndex = LayerIndex + 12
 
@@ -3477,7 +3559,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		local UpdateQuery = LPH_NO_VIRTUALIZE(function()
 			if Query then
 				local queryText = tostring(BasedLabel.Text or "")
-				local descriptionValue = tostring(DescriptionLabel.Text or "")
+				local descriptionValue = NormalizeDescriptionText(DescriptionLabel.Text) or ""
 				Query.Idx = descriptionValue ~= "" and (queryText .. " " .. descriptionValue) or queryText
 			end;
 		end);
@@ -3489,42 +3571,40 @@ function idx:AddLabel(Name: string, Warp, Description)
 
 			local handlerWidth = math.max(UIListLayout.AbsoluteContentSize.X, 0)
 			local handlerHeight = math.max(UIListLayout.AbsoluteContentSize.Y, 0)
-			local reservedWidth = handlerWidth > 0 and (handlerWidth + 14) or 0
-			local maxWidth = math.max(120, BasedFrame.AbsoluteSize.X - 22 - reservedWidth)
-			local descriptionValue = tostring(DescriptionLabel.Text or "")
+			local reservedWidth = handlerWidth > 0 and (handlerWidth + 20) or 0
+			local maxWidth = math.max(120, BasedFrame.AbsoluteSize.X - 26 - reservedWidth)
+			local descriptionValue = NormalizeDescriptionText(DescriptionLabel.Text) or ""
 			local titleWrapped = Warp ~= false or descriptionValue ~= ""
 			local spacing = 0
 			local descriptionHeight = 0
+			local topPadding = 7
+			local bottomPadding = 7
 
 			BasedLabel.TextWrapped = titleWrapped
 
-			local titleSize = TextService:GetTextSize(
-				BasedLabel.Text,
-				BasedLabel.TextSize,
-				BasedLabel.Font,
-				Vector2.new(titleWrapped and maxWidth or math.huge, math.huge)
-			)
+			local titleSize = GetTextObjectBounds(BasedLabel, Vector2.new(titleWrapped and maxWidth or math.huge, math.huge))
 			local titleHeight = titleWrapped and titleSize.Y or math.max(18, titleSize.Y)
 
 			if descriptionValue ~= "" then
-				spacing = 4
-				descriptionHeight = TextService:GetTextSize(
-					descriptionValue,
-					DescriptionLabel.TextSize,
-					DescriptionLabel.Font,
-					Vector2.new(maxWidth, math.huge)
-				).Y
+				if DescriptionLabel.Text ~= descriptionValue then
+					DescriptionLabel.Text = descriptionValue
+				end
+
+				spacing = 1
+				descriptionHeight = GetTextObjectBounds(DescriptionLabel, Vector2.new(maxWidth, math.huge)).Y
+			elseif DescriptionLabel.Text ~= "" then
+				DescriptionLabel.Text = ""
 			end
 
 			local controlHeight = math.max(24, handlerHeight)
 			local textHeight = titleHeight + spacing + descriptionHeight
-			local finalHeight = math.max(descriptionValue ~= "" and 54 or 38, textHeight + 14, controlHeight + 12)
+			local finalHeight = math.max(descriptionValue ~= "" and 42 or 32, topPadding + textHeight + bottomPadding, controlHeight + 8)
 
 			BasedLabel.Size = UDim2.new(0, maxWidth, 0, titleHeight)
 			DescriptionLabel.Visible = descriptionValue ~= ""
-			DescriptionLabel.Position = UDim2.new(0, 11, 0, 7 + titleHeight + spacing)
+			DescriptionLabel.Position = UDim2.new(0, 11, 0, topPadding + titleHeight + spacing)
 			DescriptionLabel.Size = UDim2.new(0, maxWidth, 0, descriptionHeight)
-			BasedHandler.Position = UDim2.new(1, -11, 0, math.max(6, math.floor((finalHeight - controlHeight) / 2)))
+			BasedHandler.Position = UDim2.new(1, -15, 0, math.max(4, math.floor((finalHeight - controlHeight) / 2)))
 			BasedHandler.Size = UDim2.new(0, handlerWidth, 0, controlHeight)
 
 			NeverLose.PlayAnimate(BasedFrame, SlowyTween, {
@@ -3555,7 +3635,8 @@ function idx:AddLabel(Name: string, Warp, Description)
 		end;
 
 		function handle:SetDescription(t)
-			DescriptionLabel.Text = t and tostring(t) or ""
+			local descriptionText = NormalizeDescriptionText(t)
+			DescriptionLabel.Text = descriptionText or ""
 			UpdateQuery()
 			UpdateLayout()
 		end;
@@ -3577,10 +3658,11 @@ function idx:AddLabel(Name: string, Warp, Description)
 		Config = NeverLose:ProcessParams(Config , {
 			Icon = nil or false,
 			Name = "Button",
-			Description = nil,
+			Description = false,
 			Callback = EmptyFunction,
 			ToolTip = nil,
 		});
+		Config.Description = NormalizeDescriptionText(Config.Description) or false
 
 		local Button = {};
 		local ButtonFrame = Instance.new("Frame")
@@ -3599,7 +3681,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		ButtonFrame.BackgroundTransparency = 0.88
 		ButtonFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		ButtonFrame.BorderSizePixel = 0
-		ButtonFrame.Size = UDim2.new(1, 0, 0, 38)
+		ButtonFrame.Size = UDim2.new(1, 0, 0, 34)
 		ButtonFrame.ZIndex = LayerIndex + 8
 
 		local labelOffset = HasIcon and 31 or 11
@@ -3614,6 +3696,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		BasedLabel.Size = UDim2.new(0,1, 0, 18)
 		BasedLabel.ZIndex = LayerIndex + 9
 		BasedLabel.Font = NeverLose.FontMedium
+		ApplyTextFont(BasedLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		BasedLabel.Text = Config.Name;
 		BasedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		BasedLabel.TextSize = 14.000
@@ -3632,6 +3715,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		DescriptionLabel.ZIndex = LayerIndex + 9
 		DescriptionLabel.Font = NeverLose.FontRegular
 		DescriptionLabel.Text = Config.Description and tostring(Config.Description) or ""
+		ApplyTextFont(DescriptionLabel, NeverLose.FontRegularFace, NeverLose.FontRegular)
 		DescriptionLabel.TextColor3 = Color3.fromRGB(220, 224, 232)
 		DescriptionLabel.TextSize = 11.000
 		DescriptionLabel.TextTransparency = 0.340
@@ -3648,7 +3732,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		LineFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		LineFrame.BorderSizePixel = 0
 		LineFrame.Position = UDim2.new(0.5, 0, 1, 0)
-		LineFrame.Size = UDim2.new(1, -20, 0, 1)
+		LineFrame.Size = UDim2.new(1, -24, 0, 1)
 		LineFrame.ZIndex = LayerIndex + 11
 
 		UICorner.CornerRadius = UDim.new(0, 9)
@@ -3677,7 +3761,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		local UpdateQuery = LPH_NO_VIRTUALIZE(function()
 			if Query then
 				local queryText = tostring(BasedLabel.Text or "")
-				local descriptionValue = tostring(DescriptionLabel.Text or "")
+				local descriptionValue = NormalizeDescriptionText(DescriptionLabel.Text) or ""
 				Query.Idx = descriptionValue ~= "" and (queryText .. " " .. descriptionValue) or queryText
 			end
 		end)
@@ -3687,36 +3771,34 @@ function idx:AddLabel(Name: string, Warp, Description)
 				task.wait()
 			end
 
-			local maxWidth = math.max(120, ButtonFrame.AbsoluteSize.X - labelOffset - 12)
-			local descriptionValue = tostring(DescriptionLabel.Text or "")
+			local maxWidth = math.max(120, ButtonFrame.AbsoluteSize.X - labelOffset - 18)
+			local descriptionValue = NormalizeDescriptionText(DescriptionLabel.Text) or ""
 			local titleWrapped = true
 			local spacing = 0
 			local descriptionHeight = 0
-			local titleSize = TextService:GetTextSize(
-				BasedLabel.Text,
-				BasedLabel.TextSize,
-				BasedLabel.Font,
-				Vector2.new(titleWrapped and maxWidth or math.huge, math.huge)
-			)
+			local topPadding = 7
+			local bottomPadding = 7
+			local titleSize = GetTextObjectBounds(BasedLabel, Vector2.new(titleWrapped and maxWidth or math.huge, math.huge))
 			local titleHeight = titleWrapped and titleSize.Y or math.max(18, titleSize.Y)
 
 			BasedLabel.TextWrapped = titleWrapped
 
 			if descriptionValue ~= "" then
-				spacing = 4
-				descriptionHeight = TextService:GetTextSize(
-					descriptionValue,
-					DescriptionLabel.TextSize,
-					DescriptionLabel.Font,
-					Vector2.new(maxWidth, math.huge)
-				).Y
+				if DescriptionLabel.Text ~= descriptionValue then
+					DescriptionLabel.Text = descriptionValue
+				end
+
+				spacing = 1
+				descriptionHeight = GetTextObjectBounds(DescriptionLabel, Vector2.new(maxWidth, math.huge)).Y
+			elseif DescriptionLabel.Text ~= "" then
+				DescriptionLabel.Text = ""
 			end
 
-			local finalHeight = math.max(descriptionValue ~= "" and 54 or 38, titleHeight + descriptionHeight + spacing + 14)
+			local finalHeight = math.max(descriptionValue ~= "" and 42 or 32, topPadding + titleHeight + descriptionHeight + spacing + bottomPadding)
 
 			BasedLabel.Size = UDim2.new(0, maxWidth, 0, titleHeight)
 			DescriptionLabel.Visible = descriptionValue ~= ""
-			DescriptionLabel.Position = UDim2.new(0, labelOffset, 0, 7 + titleHeight + spacing)
+			DescriptionLabel.Position = UDim2.new(0, labelOffset, 0, topPadding + titleHeight + spacing)
 			DescriptionLabel.Size = UDim2.new(0, maxWidth, 0, descriptionHeight)
 
 			NeverLose.PlayAnimate(ButtonFrame , SlowyTween , {
@@ -3751,7 +3833,8 @@ function idx:AddLabel(Name: string, Warp, Description)
 		end;
 
 		function Button:SetDescription(t)
-			DescriptionLabel.Text = t and tostring(t) or ""
+			local descriptionText = NormalizeDescriptionText(t)
+			DescriptionLabel.Text = descriptionText or ""
 			UpdateQuery()
 			UpdateLayout()
 		end;
@@ -3851,6 +3934,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		UserLabel.Size = UDim2.new(1, -35, 0, 15)
 		UserLabel.ZIndex = LayerIndex + 9
 		UserLabel.Font = NeverLose.FontMedium
+		ApplyTextFont(UserLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		UserLabel.Text = Name or 'User'
 		UserLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		UserLabel.TextSize = 13.000
@@ -3895,6 +3979,7 @@ function idx:AddLabel(Name: string, Warp, Description)
 		UserStatusLabel.Size = UDim2.new(1, -35, 0, 15)
 		UserStatusLabel.ZIndex = LayerIndex + 9
 		UserStatusLabel.Font = NeverLose.FontMedium
+		ApplyTextFont(UserStatusLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		UserStatusLabel.Text = Expires or 'Never'
 		UserStatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		UserStatusLabel.TextSize = 13.000
@@ -3989,6 +4074,7 @@ function NeverLose:CreateWindow(Config)
 	local WindowFrame = Instance.new("Frame")
 	local UICorner = Instance.new("UICorner")
 	local LeftMenuFrame = Instance.new("Frame")
+	local LeftMenuStroke = Instance.new("UIStroke")
 	local HeadFrame = Instance.new("Frame")
 	local LogoImage = Instance.new("ImageLabel")
 	local UICorner_2 = Instance.new("UICorner")
@@ -4017,7 +4103,7 @@ function NeverLose:CreateWindow(Config)
 	WindowFrame.Name = NeverLose.RandomString();
 	WindowFrame.Parent = NeverLose.ScreenGui;
 	WindowFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-	WindowFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 13)
+	WindowFrame.BackgroundColor3 = NeverLose.MainColor
 	WindowFrame.BackgroundTransparency = 0.055
 	WindowFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	WindowFrame.BorderSizePixel = 0
@@ -4102,6 +4188,10 @@ function NeverLose:CreateWindow(Config)
 				TextTransparency = 0.5
 			})
 
+			NeverLose.PlayAnimate(LeftMenuStroke , SlowyTween , {
+				Transparency = 0.780
+			})
+
 			NeverLose.PlayAnimate(RightMenuFrame , SlowyTween , {
 				BackgroundTransparency = 0.600
 			})
@@ -4170,6 +4260,10 @@ function NeverLose:CreateWindow(Config)
 
 			NeverLose.PlayAnimate(UserSettingButton , SlowyTween , {
 				TextTransparency = 1
+			})
+
+			NeverLose.PlayAnimate(LeftMenuStroke , SlowyTween , {
+				Transparency = 1
 			})
 
 			NeverLose.PlayAnimate(RightMenuFrame , SlowyTween , {
@@ -4241,6 +4335,10 @@ function NeverLose:CreateWindow(Config)
 	LeftMenuFrame.BorderSizePixel = 0
 	LeftMenuFrame.Size = UDim2.new(0, 175, 1, 0)
 
+	LeftMenuStroke.Transparency = 0.780
+	LeftMenuStroke.Color = NeverLose.StrokeColor
+	LeftMenuStroke.Parent = LeftMenuFrame
+
 	HeadFrame.Name = NeverLose.RandomString();
 	HeadFrame.Parent = LeftMenuFrame
 	HeadFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -4276,6 +4374,7 @@ function NeverLose:CreateWindow(Config)
 	WindowName.Size = UDim2.new(0, 200, 0, 25)
 	WindowName.ZIndex = 7
 		WindowName.Font = NeverLose.FontBold
+		ApplyTextFont(WindowName, NeverLose.FontBoldFace, NeverLose.FontBold)
 	WindowName.Text = Window.Name
 	WindowName.TextColor3 = Color3.fromRGB(255, 255, 255)
 	WindowName.TextSize = 18.000
@@ -4291,6 +4390,7 @@ function NeverLose:CreateWindow(Config)
 	WindowContent.Size = UDim2.new(0, 200, 0, 15)
 	WindowContent.ZIndex = 7
 		WindowContent.Font = NeverLose.FontMedium
+		ApplyTextFont(WindowContent, NeverLose.FontMediumFace, NeverLose.FontMedium)
 	WindowContent.Text = Window.Content
 	WindowContent.TextColor3 = Color3.fromRGB(255, 255, 255)
 	WindowContent.TextSize = 14
@@ -4300,7 +4400,7 @@ function NeverLose:CreateWindow(Config)
 	LineFrame.Name = NeverLose.RandomString();
 	LineFrame.Parent = HeadFrame
 	LineFrame.AnchorPoint = Vector2.new(0.5, 1)
-	LineFrame.BackgroundColor3 = Color3.fromRGB(45, 48, 58)
+	LineFrame.BackgroundColor3 = NeverLose.StrokeColor
 	LineFrame.BackgroundTransparency = 0.650
 	LineFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	LineFrame.BorderSizePixel = 0
@@ -4319,7 +4419,11 @@ function NeverLose:CreateWindow(Config)
 	LeftScrollingFrame.Position = UDim2.new(0.5, 0, 0, 60)
 	LeftScrollingFrame.Size = UDim2.new(1, -10, 1, -115)
 	LeftScrollingFrame.ZIndex = 7
-	LeftScrollingFrame.ScrollBarThickness = 0
+	LeftScrollingFrame.ScrollBarImageColor3 = NeverLose.AccentColor
+	LeftScrollingFrame.ScrollBarImageTransparency = 0.45
+	LeftScrollingFrame.ScrollBarThickness = 3
+	LeftScrollingFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+	LeftScrollingFrame.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 
 	UIListLayout.Parent = LeftScrollingFrame
 	UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -4366,6 +4470,7 @@ function NeverLose:CreateWindow(Config)
 	AccountName.Size = UDim2.new(0, 100, 0, 25)
 	AccountName.ZIndex = 7
 	AccountName.Font = NeverLose.FontBold
+	ApplyTextFont(AccountName, NeverLose.FontBoldFace, NeverLose.FontBold)
 	AccountName.Text = ""
 	AccountName.TextColor3 = Color3.fromRGB(255, 255, 255)
 	AccountName.TextSize = 14.000
@@ -4382,6 +4487,7 @@ function NeverLose:CreateWindow(Config)
 	ExpireLabel.Size = UDim2.new(0, 200, 0, 15)
 	ExpireLabel.ZIndex = 7
 	ExpireLabel.Font = NeverLose.FontMedium
+	ApplyTextFont(ExpireLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 	ExpireLabel.Text = "never"
 	ExpireLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	ExpireLabel.TextSize = 10.000
@@ -4429,7 +4535,7 @@ function NeverLose:CreateWindow(Config)
 
 	RightMenuFrame.Name = NeverLose.RandomString();
 	RightMenuFrame.Parent = WindowFrame
-	RightMenuFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 13)
+	RightMenuFrame.BackgroundColor3 = NeverLose.MainColor
 	RightMenuFrame.BackgroundTransparency = 0.48
 	RightMenuFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	RightMenuFrame.BorderSizePixel = 0
@@ -4507,6 +4613,7 @@ function NeverLose:CreateWindow(Config)
 	SearchBox.ZIndex = 12
 	SearchBox.ClearTextOnFocus = false
 	SearchBox.Font = NeverLose.FontMedium
+	ApplyTextFont(SearchBox, NeverLose.FontMediumFace, NeverLose.FontMedium)
 	SearchBox.PlaceholderText = "Search"
 	SearchBox.Text = ""
 	SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -4696,6 +4803,7 @@ function NeverLose:CreateWindow(Config)
 		TabLabel.Size = UDim2.new(1, -7, 0, 15)
 		TabLabel.ZIndex = 8
 		TabLabel.Font = NeverLose.FontMedium
+		ApplyTextFont(TabLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		TabLabel.Text = Name
 		TabLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		TabLabel.TextSize = 11.000
@@ -4776,6 +4884,7 @@ function NeverLose:CreateWindow(Config)
 		TabContentLabel.Size = UDim2.new(1, -7, 0, 15)
 		TabContentLabel.ZIndex = 9
 		TabContentLabel.Font = NeverLose.FontMedium
+		ApplyTextFont(TabContentLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 		TabContentLabel.Text = Config.Name
 		TabContentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		TabContentLabel.TextSize = 12.000
@@ -4784,10 +4893,14 @@ function NeverLose:CreateWindow(Config)
 		local TabFrame = Instance.new("Frame")
 		local LeftScroll = Instance.new("ScrollingFrame")
 		local UIListLayout = Instance.new("UIListLayout")
+		local LeftScrollPadding = Instance.new("UIPadding")
 		local RightScroll = Instance.new("ScrollingFrame")
 		local UIListLayout_2 = Instance.new("UIListLayout")
+		local RightScrollPadding = Instance.new("UIPadding")
 		local CurrentSectionLayout = "double"
 		local HasLockedSingleLayout = Config.Type == "Single"
+		local ScrollPaddingTop = 4
+		local ScrollPaddingBottom = 16
 
 		TabFrame.Name = NeverLose.RandomString();
 		TabFrame.Parent = TabContainer
@@ -4809,18 +4922,28 @@ function NeverLose:CreateWindow(Config)
 		LeftScroll.BackgroundTransparency = 1.000
 		LeftScroll.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		LeftScroll.BorderSizePixel = 0
-		LeftScroll.ClipsDescendants = false
-		LeftScroll.Position = UDim2.new(0.25, 0, 0.5, 0)
-		LeftScroll.Size = UDim2.new(0.5, 0, 1, -5)
-		LeftScroll.ScrollBarThickness = 0
+		LeftScroll.ClipsDescendants = true
+		LeftScroll.Position = UDim2.new(0.25, -3, 0.5, 0)
+		LeftScroll.Size = UDim2.new(0.5, -10, 1, -12)
+		LeftScroll.ScrollBarImageColor3 = NeverLose.AccentColor
+		LeftScroll.ScrollBarImageTransparency = 0.35
+		LeftScroll.ScrollBarThickness = 4
+		LeftScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+		LeftScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 
 		UIListLayout.Parent = LeftScroll
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout.Padding = UDim.new(0, 5)
 
+		LeftScrollPadding.Parent = LeftScroll
+		LeftScrollPadding.PaddingLeft = UDim.new(0, 2)
+		LeftScrollPadding.PaddingRight = UDim.new(0, 4)
+		LeftScrollPadding.PaddingTop = UDim.new(0, ScrollPaddingTop)
+		LeftScrollPadding.PaddingBottom = UDim.new(0, ScrollPaddingBottom)
+
 		NeverLose:AddSignal(UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(LPH_NO_VIRTUALIZE(function()
-			LeftScroll.CanvasSize = UDim2.fromOffset(0,UIListLayout.AbsoluteContentSize.Y + 1)
+			LeftScroll.CanvasSize = UDim2.fromOffset(0,UIListLayout.AbsoluteContentSize.Y + ScrollPaddingTop + ScrollPaddingBottom)
 		end)))
 
 		RightScroll.Name = NeverLose.RandomString();
@@ -4831,14 +4954,24 @@ function NeverLose:CreateWindow(Config)
 		RightScroll.BackgroundTransparency = 1.000
 		RightScroll.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		RightScroll.BorderSizePixel = 0
-		RightScroll.ClipsDescendants = false
-		RightScroll.Position = UDim2.new(0.75, 0, 0.5, 0)
-		RightScroll.Size = UDim2.new(0.5, 0, 1, -5)
-		RightScroll.ScrollBarThickness = 0
+		RightScroll.ClipsDescendants = true
+		RightScroll.Position = UDim2.new(0.75, 3, 0.5, 0)
+		RightScroll.Size = UDim2.new(0.5, -10, 1, -12)
+		RightScroll.ScrollBarImageColor3 = NeverLose.AccentColor
+		RightScroll.ScrollBarImageTransparency = 0.35
+		RightScroll.ScrollBarThickness = 4
+		RightScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+		RightScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 
 		UIListLayout_2.Parent = RightScroll
 		UIListLayout_2.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout_2.Padding = UDim.new(0, 5)
+
+		RightScrollPadding.Parent = RightScroll
+		RightScrollPadding.PaddingLeft = UDim.new(0, 2)
+		RightScrollPadding.PaddingRight = UDim.new(0, 4)
+		RightScrollPadding.PaddingTop = UDim.new(0, ScrollPaddingTop)
+		RightScrollPadding.PaddingBottom = UDim.new(0, ScrollPaddingBottom)
 
 		local ApplySectionLayout = LPH_NO_VIRTUALIZE(function(mode)
 			if HasLockedSingleLayout and mode ~= "single" then
@@ -4854,22 +4987,24 @@ function NeverLose:CreateWindow(Config)
 					end
 				end
 
-				LeftScroll.Size = UDim2.new(1, 0, 1, -5);
+				UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+				LeftScroll.Size = UDim2.new(1, -22, 1, -18);
 				LeftScroll.Position = UDim2.new(0.5, 0, 0.5, 0)
 				RightScroll.Visible = false
 				RightScroll.Active = false
 			else
-				LeftScroll.Size = UDim2.new(0.5, 0, 1, -5);
-				LeftScroll.Position = UDim2.new(0.25, 0, 0.5, 0)
+				UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+				LeftScroll.Size = UDim2.new(0.5, -12, 1, -18);
+				LeftScroll.Position = UDim2.new(0.25, -4, 0.5, 0)
 				RightScroll.Visible = true
 				RightScroll.Active = true
-				RightScroll.Size = UDim2.new(0.5, 0, 1, -5)
-				RightScroll.Position = UDim2.new(0.75, 0, 0.5, 0)
+				RightScroll.Size = UDim2.new(0.5, -12, 1, -18)
+				RightScroll.Position = UDim2.new(0.75, 4, 0.5, 0)
 			end
 		end);
 
 		NeverLose:AddSignal(UIListLayout_2:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(LPH_NO_VIRTUALIZE(function()
-			RightScroll.CanvasSize = UDim2.fromOffset(0,UIListLayout_2.AbsoluteContentSize.Y + 1)
+			RightScroll.CanvasSize = UDim2.fromOffset(0,UIListLayout_2.AbsoluteContentSize.Y + ScrollPaddingTop + ScrollPaddingBottom)
 		end)))
 
 		ApplySectionLayout(HasLockedSingleLayout and "single" or "double")
@@ -5012,6 +5147,7 @@ function NeverLose:CreateWindow(Config)
 			local UIStroke = Instance.new("UIStroke")
 			local UICorner = Instance.new("UICorner")
 			local UIListLayout = Instance.new("UIListLayout")
+			local UIPadding = Instance.new("UIPadding")
 			local SectionParent = LeftScroll
 
 			if CurrentSectionLayout == "double" and Position == "right" then
@@ -5025,7 +5161,7 @@ function NeverLose:CreateWindow(Config)
 			SectionFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			SectionFrame.BorderSizePixel = 0
 			SectionFrame.ClipsDescendants = true
-			SectionFrame.Size = UDim2.new(1, -5, 0, 0)
+			SectionFrame.Size = UDim2.new(1, -8, 0, 0)
 			SectionFrame.ZIndex = 9
 
 			SectionLabel.Name = NeverLose.RandomString();
@@ -5039,6 +5175,7 @@ function NeverLose:CreateWindow(Config)
 			SectionLabel.Size = UDim2.new(1, -32, 0, 18)
 			SectionLabel.ZIndex = 9
 			SectionLabel.Font = NeverLose.FontMedium
+			ApplyTextFont(SectionLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
 			SectionLabel.Text = Config.Name
 			SectionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 			SectionLabel.TextSize = 12.000
@@ -5054,7 +5191,7 @@ function NeverLose:CreateWindow(Config)
 			SectionHandler.BorderSizePixel = 0
 			SectionHandler.ClipsDescendants = true
 			SectionHandler.Position = UDim2.new(0.5, 0, 0, 22)
-			SectionHandler.Size = UDim2.new(1, -10, 1, -23)
+			SectionHandler.Size = UDim2.new(1, -18, 1, -28)
 			SectionHandler.ZIndex = 9
 
 			UIStroke.Transparency = 0.780
@@ -5064,6 +5201,12 @@ function NeverLose:CreateWindow(Config)
 			UICorner.CornerRadius = UDim.new(0, 9)
 			UICorner.Parent = SectionHandler
 
+			UIPadding.Parent = SectionHandler
+			UIPadding.PaddingLeft = UDim.new(0, CurrentSectionLayout == "single" and 12 or 10)
+			UIPadding.PaddingRight = UDim.new(0, CurrentSectionLayout == "single" and 12 or 10)
+			UIPadding.PaddingTop = UDim.new(0, 6)
+			UIPadding.PaddingBottom = UDim.new(0, 8)
+
 			UIListLayout.Parent = SectionHandler
 			UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 			UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -5071,11 +5214,11 @@ function NeverLose:CreateWindow(Config)
 			NeverLose:AddSignal(UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(LPH_NO_VIRTUALIZE(function()
 				if UIListLayout.AbsoluteContentSize.Y <= 1 then
 					NeverLose.PlayAnimate(SectionFrame , VSlowTween , {
-						Size = UDim2.new(1, -5, 0, 0)
+						Size = UDim2.new(1, -8, 0, 0)
 					})
 				else
 					NeverLose.PlayAnimate(SectionFrame , VSlowTween , {
-						Size = UDim2.new(1, -5, 0, UIListLayout.AbsoluteContentSize.Y + 23)
+						Size = UDim2.new(1, -8, 0, UIListLayout.AbsoluteContentSize.Y + 37)
 					})
 				end;
 			end)));
@@ -5312,7 +5455,8 @@ function NeverLose:CreateWindow(Config)
 			Content.Position = UDim2.new(0, 35, 0.5, 0)
 			Content.Size = UDim2.new(0, 1, 0, 25)
 			Content.ZIndex = 17
-			Content.Font = Enum.Font.GothamBold
+			Content.Font = NeverLose.FontBold
+			ApplyTextFont(Content, NeverLose.FontBoldFace, NeverLose.FontBold)
 			Content.Text = Name
 			Content.TextColor3 = Color3.fromRGB(186, 186, 186)
 			Content.TextSize = 15.000
@@ -5337,7 +5481,7 @@ function NeverLose:CreateWindow(Config)
 			Icon.TextWrapped = true
 
 			InnerBlock.Update = LPH_NO_VIRTUALIZE(function(value)
-				local size = TextService:GetTextSize(Content.Text , Content.TextSize,Content.Font,Vector2.new(math.huge,math.huge))
+				local size = GetTextObjectBounds(Content, Vector2.new(math.huge,math.huge))
 
 				if InnerBlock.Visible then
 					NeverLose.PlayAnimate(Frame,VSlowTween,{
@@ -5512,7 +5656,8 @@ function NeverLose:CreateNotification()
 		NotifyName.Position = UDim2.new(0, 50, 0, 7)
 		NotifyName.Size = UDim2.new(0, 200, 0, 20)
 		NotifyName.ZIndex = 132
-		NotifyName.Font = Enum.Font.GothamBold
+		NotifyName.Font = NeverLose.FontBold
+		ApplyTextFont(NotifyName, NeverLose.FontBoldFace, NeverLose.FontBold)
 		NotifyName.Text = Config.Title
 		NotifyName.TextColor3 = Color3.fromRGB(255, 255, 255)
 		NotifyName.TextSize = 17.000
@@ -5527,15 +5672,16 @@ function NeverLose:CreateNotification()
 		NotifyContent.Position = UDim2.new(0, 50, 0, 28)
 		NotifyContent.Size = UDim2.new(0, 200, 0, 15)
 		NotifyContent.ZIndex = 132
-		NotifyContent.Font = Enum.Font.GothamBold
+		NotifyContent.Font = NeverLose.FontBold
+		ApplyTextFont(NotifyContent, NeverLose.FontBoldFace, NeverLose.FontBold)
 		NotifyContent.Text = Config.Content
 		NotifyContent.TextColor3 = Color3.fromRGB(255, 255, 255)
 		NotifyContent.TextSize = 14
 		NotifyContent.TextTransparency = 0.650
 		NotifyContent.TextXAlignment = Enum.TextXAlignment.Left
 
-		local Size1 = TextService:GetTextSize(NotifyName.Text,NotifyName.TextSize,NotifyName.Font,Vector2.new(math.huge,math.huge));
-		local Size2 = TextService:GetTextSize(NotifyContent.Text,NotifyContent.TextSize,NotifyContent.Font,Vector2.new(math.huge,math.huge));
+		local Size1 = GetTextObjectBounds(NotifyName, Vector2.new(math.huge,math.huge));
+		local Size2 = GetTextObjectBounds(NotifyContent, Vector2.new(math.huge,math.huge));
 
 		local MainSize = math.max(Size1.X , Size2.X);
 
@@ -5659,7 +5805,8 @@ function NeverLose:CreateLogger()
 		LogContent.Position = UDim2.new(0, 25, 0, 2)
 		LogContent.Size = UDim2.new(0, 200, 0, 15)
 		LogContent.ZIndex = 132
-		LogContent.Font = Enum.Font.GothamBold
+		LogContent.Font = NeverLose.FontBold
+		ApplyTextFont(LogContent, NeverLose.FontBoldFace, NeverLose.FontBold)
 		LogContent.Text = Message
 		LogContent.TextColor3 = Color3.fromRGB(255, 255, 255)
 		LogContent.TextSize = 12.000
@@ -5696,7 +5843,7 @@ function NeverLose:CreateLogger()
 		Icon.TextTransparency = 1--0.250
 		Icon.TextWrapped = true
 
-		local size = TextService:GetTextSize(LogContent.Text,LogContent.TextSize,LogContent.Font,Vector2.new(math.huge,math.huge));
+		local size = GetTextObjectBounds(LogContent, Vector2.new(math.huge,math.huge));
 
 		NeverLose.PlayAnimate(LogFrame , SlowyTween , {
 			Size = UDim2.new(0, size.X + 35, 0, 20),
@@ -5873,7 +6020,8 @@ function NeverLose:CreateIndicator()
 		Content.Position = UDim2.new(0, 40, 0.5, 0)
 		Content.Size = UDim2.new(1, -40, 0, 25)
 		Content.ZIndex = 17
-		Content.Font = Enum.Font.GothamBold
+		Content.Font = NeverLose.FontBold
+		ApplyTextFont(Content, NeverLose.FontBoldFace, NeverLose.FontBold)
 		Content.Text = Config.Name
 		Content.TextColor3 = Color3.fromRGB(186, 186, 186)
 		Content.TextSize = 20.000
@@ -5881,7 +6029,7 @@ function NeverLose:CreateIndicator()
 		Content.TextXAlignment = Enum.TextXAlignment.Left
 
 		Indicator.Update = LPH_NO_VIRTUALIZE(function()
-			local text = TextService:GetTextSize(Content.Text,Content.TextSize , Content.Font , Vector2.new(math.huge,math.huge));
+			local text = GetTextObjectBounds(Content, Vector2.new(math.huge,math.huge));
 
 			NeverLose.PlayAnimate(IndicatorItem , SlowyTween , {
 				Size = UDim2.new(0, text.X + 60, 0, 40);
