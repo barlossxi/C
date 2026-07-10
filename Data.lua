@@ -22,10 +22,24 @@ local State = {
     DefaultConfigName = "Default",
     SelectedConfig = "Default",
     SelectionFile = "__selected_config.json",
+    SyncFile = "__multi_window_sync.json",
     AutoSaveConfig = true,
     SaveQueue = 0,
     SaveQueued = false,
     LoadingConfig = false,
+    SyncEnabled = false,
+    SyncApplying = false,
+    SyncThread = nil,
+    SyncLastToken = nil,
+    SyncSequence = 0,
+    SyncClientId = string.format("%s-%s-%d", tostring(game.GameId), tostring(game.JobId or "local"), math.random(100000, 999999)),
+    SyncIgnoredFlags = {
+        ["Language"] = true,
+        ["Menu Keybind"] = true,
+        ["Menu Scale"] = true,
+        ["__Loader Selected Save"] = true,
+        ["Multi Window Sync"] = true,
+    },
 }
 
 local function Merge(defaults, options)
@@ -317,6 +331,18 @@ local function GetSelectionPath()
     return JoinPath(State.ConfigFolder, State.SelectionFile)
 end
 
+local function GetSyncPath()
+    return JoinPath(State.ConfigFolder, State.SyncFile)
+end
+
+local function GetSyncTimestamp()
+    if DateTime and DateTime.now then
+        return DateTime.now().UnixTimestampMillis
+    end
+
+    return math.floor(os.time() * 1000)
+end
+
 local function EncodeValue(value)
     local valueType = typeof(value)
 
@@ -403,6 +429,154 @@ local function ApplySaveData(data)
     end
 
     return true
+end
+
+local function ReadSyncData()
+    if not FileSystemSupported() or not EnsureFolder(State.ConfigFolder) then
+        return nil
+    end
+
+    local path = GetSyncPath()
+    if not isfile(path) then
+        return nil
+    end
+
+    local ok, data = pcall(function()
+        return GetHttpService():JSONDecode(readfile(path))
+    end)
+
+    if ok and typeof(data) == "table" then
+        return data
+    end
+
+    return nil
+end
+
+local function ShouldSyncFlag(flagName)
+    return type(flagName) == "string"
+        and flagName ~= ""
+        and not State.SyncIgnoredFlags[flagName]
+        and State.Controls[flagName] ~= nil
+end
+
+local function SyncControlValue(flagName, value)
+    if not State.SyncEnabled or State.LoadingConfig or State.SyncApplying or not ShouldSyncFlag(flagName) then
+        return false
+    end
+
+    if not FileSystemSupported() or not EnsureFolder(State.ConfigFolder) then
+        return false
+    end
+
+    local encodedValue = EncodeValue(value)
+    if encodedValue == nil and value ~= nil then
+        return false
+    end
+
+    State.SyncSequence = State.SyncSequence + 1
+    local token = string.format("%s:%d:%d", State.SyncClientId, GetSyncTimestamp(), State.SyncSequence)
+    local ok, encoded = pcall(function()
+        return GetHttpService():JSONEncode({
+            Token = token,
+            Source = State.SyncClientId,
+            Flag = flagName,
+            Value = encodedValue,
+        })
+    end)
+
+    if not ok or not encoded then
+        return false
+    end
+
+    writefile(GetSyncPath(), encoded)
+    State.SyncLastToken = token
+    return true
+end
+
+local function ApplySyncData(data)
+    if typeof(data) ~= "table" then
+        return false
+    end
+
+    local token = tostring(data.Token or "")
+    if token == "" or token == State.SyncLastToken then
+        return false
+    end
+
+    State.SyncLastToken = token
+
+    if tostring(data.Source or "") == State.SyncClientId then
+        return false
+    end
+
+    local flagName = tostring(data.Flag or "")
+    if not ShouldSyncFlag(flagName) then
+        return false
+    end
+
+    local control = State.Controls[flagName]
+    if not control or not control.SetValue then
+        return false
+    end
+
+    local value = DecodeValue(data.Value)
+    State.SyncApplying = true
+
+    local ok = pcall(function()
+        control:SetValue(value)
+    end)
+
+    State.SyncApplying = false
+    return ok
+end
+
+local function StopSyncThread()
+    if State.SyncThread then
+        task.cancel(State.SyncThread)
+        State.SyncThread = nil
+    end
+end
+
+local function StartSyncThread()
+    if State.SyncThread or not State.SyncEnabled or not FileSystemSupported() or not EnsureFolder(State.ConfigFolder) then
+        return
+    end
+
+    local snapshot = ReadSyncData()
+    if snapshot and snapshot.Token then
+        State.SyncLastToken = tostring(snapshot.Token)
+    end
+
+    State.SyncThread = task.spawn(function()
+        while State.SyncEnabled do
+            local data = ReadSyncData()
+            if data then
+                ApplySyncData(data)
+            end
+
+            task.wait(0.2)
+        end
+
+        State.SyncThread = nil
+    end)
+end
+
+local function SetSyncEnabled(enabled)
+    enabled = enabled == true
+    State.SyncEnabled = enabled
+
+    if not enabled then
+        StopSyncThread()
+        return true
+    end
+
+    if not FileSystemSupported() or not EnsureFolder(State.ConfigFolder) then
+        State.SyncEnabled = false
+        return false
+    end
+
+    StartSyncThread()
+    return State.SyncEnabled
 end
 
 local function ReadUserSelections()
@@ -670,6 +844,14 @@ function Loader:GetSelectedConfig()
     return State.SelectedConfig
 end
 
+function Loader:SetControlSyncEnabled(enabled)
+    return SetSyncEnabled(enabled)
+end
+
+function Loader:GetControlSyncEnabled()
+    return State.SyncEnabled
+end
+
 function Loader:GetConfigList()
     local configs = {
         State.DefaultConfigName,
@@ -850,6 +1032,7 @@ function Loader:AddToggle(where, text, callback)
         end
 
         QueueSaveConfig()
+        SyncControlValue(text, State.Config[text])
     end
 
     local defaultValue = State.Config[text]
@@ -903,6 +1086,7 @@ function Loader:AddSlider(where, text, data)
             State.Config[text] = v
             SafeCall(data.Callback, v)
             QueueSaveConfig()
+            SyncControlValue(text, State.Config[text])
         end,
     })
     AttachLabelSetter(slider, label)
@@ -944,6 +1128,7 @@ function Loader:AddDropdown(where, text, data)
             State.Config[text] = value
             SafeCall(data.Callback, value)
             QueueSaveConfig()
+            SyncControlValue(text, State.Config[text])
         end,
     })
     AttachLabelSetter(dropdown, label)
@@ -977,6 +1162,7 @@ function Loader:AddTextbox(where, text, data)
             State.Config[text] = v
             SafeCall(data.Callback, v)
             QueueSaveConfig()
+            SyncControlValue(text, State.Config[text])
         end,
     })
     AttachLabelSetter(textbox, label)
@@ -1007,6 +1193,7 @@ function Loader:AddKeybind(where, text, data)
             State.Config[text] = v
             SafeCall(data.Callback, v)
             QueueSaveConfig()
+            SyncControlValue(text, State.Config[text])
         end,
     })
     AttachLabelSetter(keybind, label)
