@@ -462,6 +462,18 @@ local function NormalizeDescriptionText(value)
 	return text
 end
 
+local function GetMinimumTextWidth(frameWidth)
+	if frameWidth <= 0 then
+		return 120
+	elseif frameWidth < 240 then
+		return 48
+	elseif frameWidth < 320 then
+		return 64
+	end
+
+	return 120
+end
+
 NeverLose.FontRegularEnum = Enum.Font.Gotham;
 NeverLose.FontMediumEnum = Enum.Font.GothamMedium;
 NeverLose.FontBoldEnum = Enum.Font.GothamBold;
@@ -1120,6 +1132,47 @@ NeverLose.CreateSignal = LPH_NO_VIRTUALIZE(function(self , DefaultValue)
 
 	return bind;
 end);
+
+NeverLose.Locale = "EN";
+NeverLose.LocaleSignal = NeverLose:CreateSignal(NeverLose.Locale);
+
+function NeverLose:SetLocale(locale)
+	local normalized = string.upper(tostring(locale or "EN"));
+
+	if normalized ~= "TH" then
+		normalized = "EN";
+	end;
+
+	if self.Locale ~= normalized then
+		self.Locale = normalized;
+		self.LocaleSignal:SetValue(normalized);
+	else
+		self.Locale = normalized;
+	end;
+
+	return normalized;
+end;
+
+function NeverLose:BindLocalizedText(TextObject, baseSize: number, thaiSize: number?)
+	if not TextObject then
+		return;
+	end;
+
+	TextObject:SetAttribute("__BaseTextSize", baseSize);
+	TextObject:SetAttribute("__ThaiTextSize", thaiSize or (baseSize + 1));
+
+	local ApplyLocale = LPH_NO_VIRTUALIZE(function(locale)
+		local isThai = (locale or self.Locale) == "TH";
+		local nextSize = isThai and (TextObject:GetAttribute("__ThaiTextSize") or (baseSize + 1)) or (TextObject:GetAttribute("__BaseTextSize") or baseSize);
+
+		if TextObject.TextSize ~= nextSize then
+			TextObject.TextSize = nextSize;
+		end;
+	end);
+
+	ApplyLocale(self.Locale);
+	self.LocaleSignal:Connect(ApplyLocale);
+end;
 
 NeverLose.SetIconMode = LPH_NO_VIRTUALIZE(function(self , Label , Icon , PreferBold)
 	if not IsTextIconObject(Label) then
@@ -3767,6 +3820,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedLabel.TextTransparency = 0.180
 		BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
 		BasedLabel.TextYAlignment = Enum.TextYAlignment.Top
+		NeverLose:BindLocalizedText(BasedLabel, 14, 15)
 
 		DescriptionLabel.Name = NeverLose.RandomString();
 		DescriptionLabel.Parent = BasedFrame
@@ -3784,6 +3838,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		DescriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
 		DescriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
 		DescriptionLabel.Visible = DescriptionLabel.Text ~= ""
+		NeverLose:BindLocalizedText(DescriptionLabel, 14, 15)
 
 		LineFrame.Name = NeverLose.RandomString();
 		LineFrame.Parent = BasedFrame
@@ -3828,7 +3883,8 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 			local handlerWidth = math.max(UIListLayout.AbsoluteContentSize.X, 0)
 			local handlerHeight = math.max(UIListLayout.AbsoluteContentSize.Y, 0)
 			local reservedWidth = handlerWidth > 0 and (handlerWidth + 20) or 0
-			local maxWidth = math.max(120, BasedFrame.AbsoluteSize.X - 26 - reservedWidth)
+			local minimumLabelWidth = GetMinimumTextWidth(BasedFrame.AbsoluteSize.X)
+			local maxWidth = math.max(minimumLabelWidth, BasedFrame.AbsoluteSize.X - 26 - reservedWidth)
 			local descriptionValue = NormalizeDescriptionText(DescriptionLabel.Text) or ""
 			local titleWrapped = Warp ~= false or descriptionValue ~= ""
 			local spacing = 0
@@ -3874,6 +3930,9 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		NeverLose:AddSignal(BasedFrame:GetPropertyChangedSignal('AbsoluteSize'):Connect(LPH_NO_VIRTUALIZE(function()
 			task.defer(UpdateLayout)
 		end)))
+		NeverLose.LocaleSignal:Connect(LPH_NO_VIRTUALIZE(function()
+			task.defer(UpdateLayout)
+		end))
 
 		local handle = NeverLose:RegisiterHandler(BasedHandler, Signel);
 		handle.Root = BasedFrame;
@@ -3959,6 +4018,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedLabel.TextTransparency = 0.140
 		BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
 		BasedLabel.TextYAlignment = Enum.TextYAlignment.Top
+		NeverLose:BindLocalizedText(BasedLabel, 14, 15)
 
 		DescriptionLabel.Name = NeverLose.RandomString();
 		DescriptionLabel.Parent = ButtonFrame
@@ -3979,6 +4039,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		DescriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
 		DescriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
 		DescriptionLabel.Visible = DescriptionLabel.Text ~= ""
+		NeverLose:BindLocalizedText(DescriptionLabel, 14, 15)
 
 		LineFrame.Name = NeverLose.RandomString();
 		LineFrame.Parent = ButtonFrame
@@ -4026,7 +4087,8 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 				task.wait()
 			end
 
-			local maxWidth = math.max(120, ButtonFrame.AbsoluteSize.X - labelOffset - 18)
+			local minimumLabelWidth = GetMinimumTextWidth(ButtonFrame.AbsoluteSize.X)
+			local maxWidth = math.max(minimumLabelWidth, ButtonFrame.AbsoluteSize.X - labelOffset - 18)
 			local descriptionValue = NormalizeDescriptionText(DescriptionLabel.Text) or ""
 			local titleWrapped = true
 			local spacing = 0
@@ -4064,6 +4126,9 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		NeverLose:AddSignal(ButtonFrame:GetPropertyChangedSignal('AbsoluteSize'):Connect(LPH_NO_VIRTUALIZE(function()
 			task.defer(UpdateLayout)
 		end)))
+		NeverLose.LocaleSignal:Connect(LPH_NO_VIRTUALIZE(function()
+			task.defer(UpdateLayout)
+		end))
 
 		local bth = NeverLose:CreateInput(ButtonFrame , LPH_NO_VIRTUALIZE(function()
 			Config.Callback();
@@ -5117,8 +5182,8 @@ function NeverLose:CreateWindow(Config)
 		TabIcon.BackgroundTransparency = 1.000
 		TabIcon.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		TabIcon.BorderSizePixel = 0
-		TabIcon.Position = UDim2.new(0, 2, 0.5, 0)
-		TabIcon.Size = UDim2.new(0, 25, 0, 25)
+		TabIcon.Position = UDim2.new(0, 5, 0.5, 0)
+		TabIcon.Size = UDim2.new(0, 18, 0, 18)
 		TabIcon.ZIndex = 9
 		TabIcon.TextColor3 = NeverLose.AccentColor
 		TabIcon.TextSize = 15.000
@@ -5132,7 +5197,7 @@ function NeverLose:CreateWindow(Config)
 		TabContentLabel.BackgroundTransparency = 1.000
 		TabContentLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		TabContentLabel.BorderSizePixel = 0
-		TabContentLabel.Position = UDim2.new(0, 30, 0.5, 0)
+		TabContentLabel.Position = UDim2.new(0, 27, 0.5, 0)
 		TabContentLabel.Size = UDim2.new(1, -7, 0, 15)
 		TabContentLabel.ZIndex = 9
 		TabContentLabel.Font = NeverLose.FontMedium
@@ -5141,6 +5206,7 @@ function NeverLose:CreateWindow(Config)
 		TabContentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		TabContentLabel.TextSize = 14.000
 		TabContentLabel.TextXAlignment = Enum.TextXAlignment.Left
+		NeverLose:BindLocalizedText(TabContentLabel, 14, 15)
 
 		local TabFrame = Instance.new("Frame")
 		local LeftScroll = Instance.new("ScrollingFrame")
@@ -5225,6 +5291,18 @@ function NeverLose:CreateWindow(Config)
 		RightScrollPadding.PaddingTop = UDim.new(0, ScrollPaddingTop)
 		RightScrollPadding.PaddingBottom = UDim.new(0, ScrollPaddingBottom)
 
+		local GetResponsiveSectionLayout = LPH_NO_VIRTUALIZE(function()
+			if HasLockedSingleLayout then
+				return "single"
+			end
+
+			if TabFrame.AbsoluteSize.X > 0 and TabFrame.AbsoluteSize.X < 520 then
+				return "single"
+			end
+
+			return "double"
+		end)
+
 		local ApplySectionLayout = LPH_NO_VIRTUALIZE(function(mode)
 			if HasLockedSingleLayout and mode ~= "single" then
 				mode = "single"
@@ -5232,11 +5310,19 @@ function NeverLose:CreateWindow(Config)
 
 			CurrentSectionLayout = mode
 
-			if mode == "single" then
-				for _, Child in next, RightScroll:GetChildren() do
+			local Frames = {}
+
+			for _, Container in next, {LeftScroll, RightScroll} do
+				for _, Child in next, Container:GetChildren() do
 					if Child:IsA("Frame") then
-						Child.Parent = LeftScroll
+						table.insert(Frames, Child)
 					end
+				end
+			end
+
+			if mode == "single" then
+				for _, Child in next, Frames do
+					Child.Parent = LeftScroll
 				end
 
 				UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -5245,6 +5331,11 @@ function NeverLose:CreateWindow(Config)
 				RightScroll.Visible = false
 				RightScroll.Active = false
 			else
+				for _, Child in next, Frames do
+					local desiredPosition = string.lower(tostring(Child:GetAttribute("SectionPosition") or "left"))
+					Child.Parent = desiredPosition == "right" and RightScroll or LeftScroll
+				end
+
 				UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 				LeftScroll.Size = UDim2.new(0.5, -12, 1, -18);
 				LeftScroll.Position = UDim2.new(0.25, -4, 0.5, 0)
@@ -5259,7 +5350,12 @@ function NeverLose:CreateWindow(Config)
 			RightScroll.CanvasSize = UDim2.fromOffset(0,UIListLayout_2.AbsoluteContentSize.Y + ScrollPaddingTop + ScrollPaddingBottom)
 		end)))
 
-		ApplySectionLayout(HasLockedSingleLayout and "single" or "double")
+		ApplySectionLayout(GetResponsiveSectionLayout())
+		NeverLose:AddSignal(TabFrame:GetPropertyChangedSignal('AbsoluteSize'):Connect(LPH_NO_VIRTUALIZE(function()
+			task.defer(function()
+				ApplySectionLayout(GetResponsiveSectionLayout())
+			end)
+		end)))
 
 		NeverLose:AddSignal(TabIcon:GetPropertyChangedSignal('TextTransparency'):Connect(LPH_NO_VIRTUALIZE(function()
 			if TabIcon.TextTransparency > 0.4 then
@@ -5388,10 +5484,9 @@ function NeverLose:CreateWindow(Config)
 
 			if Position == "full" or Position == "single" then
 				HasLockedSingleLayout = true
-				ApplySectionLayout("single")
-			elseif not HasLockedSingleLayout then
-				ApplySectionLayout("double")
 			end;
+
+			ApplySectionLayout(GetResponsiveSectionLayout())
 
 			local SectionFrame = Instance.new("Frame")
 			local SectionLabel = Instance.new("TextLabel")
@@ -5415,6 +5510,7 @@ function NeverLose:CreateWindow(Config)
 			SectionFrame.ClipsDescendants = true
 			SectionFrame.Size = UDim2.new(1, -8, 0, 0)
 			SectionFrame.ZIndex = 9
+			SectionFrame:SetAttribute("SectionPosition", Position)
 
 			SectionLabel.Name = NeverLose.RandomString();
 			SectionLabel.Parent = SectionFrame
@@ -5433,6 +5529,7 @@ function NeverLose:CreateWindow(Config)
 			SectionLabel.TextSize = 14.000
 			SectionLabel.TextTransparency = 0.380
 			SectionLabel.TextXAlignment = Enum.TextXAlignment.Left
+			NeverLose:BindLocalizedText(SectionLabel, 14, 15)
 
 			SectionHandler.Name = NeverLose.RandomString();
 			SectionHandler.Parent = SectionFrame
@@ -5704,7 +5801,7 @@ function NeverLose:CreateWindow(Config)
 			Content.BackgroundTransparency = 1.000
 			Content.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			Content.BorderSizePixel = 0
-			Content.Position = UDim2.new(0, 35, 0.5, 0)
+			Content.Position = UDim2.new(0, 31, 0.5, 0)
 			Content.Size = UDim2.new(0, 1, 0, 25)
 			Content.ZIndex = 17
 			Content.Font = NeverLose.FontBold
@@ -5722,8 +5819,8 @@ function NeverLose:CreateWindow(Config)
 			Icon.BackgroundTransparency = 1.000
 			Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			Icon.BorderSizePixel = 0
-			Icon.Position = UDim2.new(0, 10, 0.5, 0)
-			Icon.Size = UDim2.new(0, 20, 0, 20)
+			Icon.Position = UDim2.new(0, 11, 0.5, 0)
+			Icon.Size = UDim2.new(0, 16, 0, 16)
 			Icon.ZIndex = 17
 			Icon.TextColor3 = NeverLose.AccentColor
 			Icon.TextSize = 15.000
@@ -5736,7 +5833,7 @@ function NeverLose:CreateWindow(Config)
 
 				if InnerBlock.Visible then
 					NeverLose.PlayAnimate(Frame,VSlowTween,{
-						Size = UDim2.new(0, size.X + 35, 0, 30)
+						Size = UDim2.new(0, size.X + 31, 0, 30)
 					})
 				else
 					NeverLose.PlayAnimate(Frame,VSlowTween,{
