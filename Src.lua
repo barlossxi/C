@@ -5212,11 +5212,6 @@ function NeverLose:CreateWindow(Config)
 		local LeftScroll = Instance.new("ScrollingFrame")
 		local UIListLayout = Instance.new("UIListLayout")
 		local LeftScrollPadding = Instance.new("UIPadding")
-		local RightScroll = Instance.new("ScrollingFrame")
-		local UIListLayout_2 = Instance.new("UIListLayout")
-		local RightScrollPadding = Instance.new("UIPadding")
-		local CurrentSectionLayout = "double"
-		local HasLockedSingleLayout = Config.Type == "Single"
 		local ScrollPaddingTop = 4
 		local ScrollPaddingBottom = 16
 
@@ -5241,8 +5236,8 @@ function NeverLose:CreateWindow(Config)
 		LeftScroll.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		LeftScroll.BorderSizePixel = 0
 		LeftScroll.ClipsDescendants = true
-		LeftScroll.Position = UDim2.new(0.25, -3, 0.5, 0)
-		LeftScroll.Size = UDim2.new(0.5, -10, 1, -12)
+		LeftScroll.Position = UDim2.new(0.5, 0, 0.5, 0)
+		LeftScroll.Size = UDim2.new(1, -22, 1, -18)
 		LeftScroll.ScrollBarImageColor3 = NeverLose.AccentColor
 		LeftScroll.ScrollBarImageTransparency = 0.35
 		LeftScroll.ScrollBarThickness = 4
@@ -5250,7 +5245,7 @@ function NeverLose:CreateWindow(Config)
 		LeftScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 
 		UIListLayout.Parent = LeftScroll
-		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout.Padding = UDim.new(0, 5)
 
@@ -5264,108 +5259,13 @@ function NeverLose:CreateWindow(Config)
 			LeftScroll.CanvasSize = UDim2.fromOffset(0,UIListLayout.AbsoluteContentSize.Y + ScrollPaddingTop + ScrollPaddingBottom)
 		end)))
 
-		RightScroll.Name = NeverLose.RandomString();
-		RightScroll.Parent = TabFrame
-		RightScroll.Active = true
-		RightScroll.AnchorPoint = Vector2.new(0.5, 0.5)
-		RightScroll.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		RightScroll.BackgroundTransparency = 1.000
-		RightScroll.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		RightScroll.BorderSizePixel = 0
-		RightScroll.ClipsDescendants = true
-		RightScroll.Position = UDim2.new(0.75, 3, 0.5, 0)
-		RightScroll.Size = UDim2.new(0.5, -10, 1, -12)
-		RightScroll.ScrollBarImageColor3 = NeverLose.AccentColor
-		RightScroll.ScrollBarImageTransparency = 0.35
-		RightScroll.ScrollBarThickness = 4
-		RightScroll.ScrollingDirection = Enum.ScrollingDirection.Y
-		RightScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
-
-		UIListLayout_2.Parent = RightScroll
-		UIListLayout_2.SortOrder = Enum.SortOrder.LayoutOrder
-		UIListLayout_2.Padding = UDim.new(0, 5)
-
-		RightScrollPadding.Parent = RightScroll
-		RightScrollPadding.PaddingLeft = UDim.new(0, 2)
-		RightScrollPadding.PaddingRight = UDim.new(0, 4)
-		RightScrollPadding.PaddingTop = UDim.new(0, ScrollPaddingTop)
-		RightScrollPadding.PaddingBottom = UDim.new(0, ScrollPaddingBottom)
-
-		local GetResponsiveSectionLayout = LPH_NO_VIRTUALIZE(function()
-			if HasLockedSingleLayout then
-				return "single"
-			end
-
-			if TabFrame.AbsoluteSize.X > 0 and TabFrame.AbsoluteSize.X < 520 then
-				return "single"
-			end
-
-			return "double"
-		end)
-
-		local ApplySectionLayout = LPH_NO_VIRTUALIZE(function(mode)
-			if HasLockedSingleLayout and mode ~= "single" then
-				mode = "single"
-			end
-
-			CurrentSectionLayout = mode
-
-			local Frames = {}
-
-			for _, Container in next, {LeftScroll, RightScroll} do
-				for _, Child in next, Container:GetChildren() do
-					if Child:IsA("Frame") then
-						table.insert(Frames, Child)
-					end
-				end
-			end
-
-			if mode == "single" then
-				for _, Child in next, Frames do
-					Child.Parent = LeftScroll
-				end
-
-				UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-				LeftScroll.Size = UDim2.new(1, -22, 1, -18);
-				LeftScroll.Position = UDim2.new(0.5, 0, 0.5, 0)
-				RightScroll.Visible = false
-				RightScroll.Active = false
-			else
-				for _, Child in next, Frames do
-					local desiredPosition = string.lower(tostring(Child:GetAttribute("SectionPosition") or "left"))
-					Child.Parent = desiredPosition == "right" and RightScroll or LeftScroll
-				end
-
-				UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-				LeftScroll.Size = UDim2.new(0.5, -12, 1, -18);
-				LeftScroll.Position = UDim2.new(0.25, -4, 0.5, 0)
-				RightScroll.Visible = true
-				RightScroll.Active = true
-				RightScroll.Size = UDim2.new(0.5, -12, 1, -18)
-				RightScroll.Position = UDim2.new(0.75, 4, 0.5, 0)
-			end
-		end);
-
-		NeverLose:AddSignal(UIListLayout_2:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(LPH_NO_VIRTUALIZE(function()
-			RightScroll.CanvasSize = UDim2.fromOffset(0,UIListLayout_2.AbsoluteContentSize.Y + ScrollPaddingTop + ScrollPaddingBottom)
-		end)))
-
-		ApplySectionLayout(GetResponsiveSectionLayout())
-		NeverLose:AddSignal(TabFrame:GetPropertyChangedSignal('AbsoluteSize'):Connect(LPH_NO_VIRTUALIZE(function()
-			task.defer(function()
-				ApplySectionLayout(GetResponsiveSectionLayout())
-			end)
-		end)))
-
 		NeverLose:AddSignal(TabIcon:GetPropertyChangedSignal('TextTransparency'):Connect(LPH_NO_VIRTUALIZE(function()
 			if TabIcon.TextTransparency > 0.4 then
 				UIListLayout.Parent = nil;
-				UIListLayout_2.Parent = nil;
 				TabFrame.Visible = false;
 				TabFrame.Parent = nil
 			else
 				UIListLayout.Parent = LeftScroll;
-				UIListLayout_2.Parent = RightScroll;
 				TabFrame.Visible = true;
 				TabFrame.Parent = TabContainer;
 			end;
@@ -5482,12 +5382,6 @@ function NeverLose:CreateWindow(Config)
 
 			local Position = string.lower(tostring(Config.Position or 'left'))
 
-			if Position == "full" or Position == "single" then
-				HasLockedSingleLayout = true
-			end;
-
-			ApplySectionLayout(GetResponsiveSectionLayout())
-
 			local SectionFrame = Instance.new("Frame")
 			local SectionLabel = Instance.new("TextLabel")
 			local SectionHandler = Instance.new("Frame")
@@ -5496,10 +5390,6 @@ function NeverLose:CreateWindow(Config)
 			local UIListLayout = Instance.new("UIListLayout")
 			local UIPadding = Instance.new("UIPadding")
 			local SectionParent = LeftScroll
-
-			if CurrentSectionLayout == "double" and Position == "right" then
-				SectionParent = RightScroll
-			end
 
 			SectionFrame.Name = NeverLose.RandomString();
 			SectionFrame.Parent = SectionParent
@@ -5551,8 +5441,8 @@ function NeverLose:CreateWindow(Config)
 			UICorner.Parent = SectionHandler
 
 			UIPadding.Parent = SectionHandler
-			UIPadding.PaddingLeft = UDim.new(0, CurrentSectionLayout == "single" and 12 or 10)
-			UIPadding.PaddingRight = UDim.new(0, CurrentSectionLayout == "single" and 12 or 10)
+			UIPadding.PaddingLeft = UDim.new(0, 12)
+			UIPadding.PaddingRight = UDim.new(0, 12)
 			UIPadding.PaddingTop = UDim.new(0, 6)
 			UIPadding.PaddingBottom = UDim.new(0, 8)
 
