@@ -5377,10 +5377,10 @@ function NeverLose:CreateWindow(Config)
 		function Tab:AddSection(Config)
 			Config = NeverLose:ProcessParams(Config , {
 				Name = "SECTION",
-				Position = 'left'
+				Position = 'full'
 			});
 
-			local Position = string.lower(tostring(Config.Position or 'left'))
+			local Position = string.lower(tostring(Config.Position or 'full'))
 
 			local SectionFrame = Instance.new("Frame")
 			local SectionLabel = Instance.new("TextLabel")
