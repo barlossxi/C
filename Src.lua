@@ -418,7 +418,7 @@ local function ApplyTextFont(textObject, fontFace, fallbackEnum)
 	end)
 end
 
-local function GetTextBounds(text, textSize, fontEnum, frameSize, fontFace)
+local function MeasureTextBounds(text, textSize, fontEnum, frameSize, fontFace)
 	local safeFrameSize = frameSize or Vector2.new(math.huge, math.huge)
 	local textService = game:GetService('TextService')
 
@@ -441,6 +441,32 @@ local function GetTextBounds(text, textSize, fontEnum, frameSize, fontFace)
 	end
 
 	return textService:GetTextSize(tostring(text or ""), textSize, fontEnum or Enum.Font.Gotham, safeFrameSize)
+end
+
+local function GetTextBounds(text, textSize, fontEnum, frameSize, fontFace)
+	local textValue = tostring(text or ""):gsub("\r\n", "\n")
+
+	if not string.find(textValue, "\n", 1, true) then
+		return MeasureTextBounds(textValue, textSize, fontEnum, frameSize, fontFace)
+	end
+
+	local maxWidth = 0
+	local totalHeight = 0
+	local lineCount = 0
+
+	for line in (textValue .. "\n"):gmatch("(.-)\n") do
+		local sample = line ~= "" and line or " "
+		local bounds = MeasureTextBounds(sample, textSize, fontEnum, frameSize, fontFace)
+		maxWidth = math.max(maxWidth, bounds.X)
+		totalHeight = totalHeight + bounds.Y
+		lineCount = lineCount + 1
+	end
+
+	if lineCount == 0 then
+		return MeasureTextBounds(textValue, textSize, fontEnum, frameSize, fontFace)
+	end
+
+	return Vector2.new(maxWidth, totalHeight)
 end
 
 local function GetTextObjectBounds(textObject, frameSize)
