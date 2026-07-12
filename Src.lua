@@ -479,6 +479,7 @@ local function NormalizeDescriptionText(value)
 	end
 
 	local text = tostring(value)
+	text = text:gsub("\r\n", "\n"):gsub("\r", "\n"):gsub("\\n", "\n")
 	text = string.gsub(text, "^%s*(.-)%s*$", "%1")
 
 	if text == "" then
@@ -486,6 +487,26 @@ local function NormalizeDescriptionText(value)
 	end
 
 	return text
+end
+
+local function GetDescriptionLines(value)
+	local text = NormalizeDescriptionText(value)
+
+	if not text then
+		return {}
+	end
+
+	local lines = {}
+
+	for line in (text .. "\n"):gmatch("(.-)\n") do
+		lines[#lines + 1] = line
+	end
+
+	if #lines == 0 then
+		lines[1] = text
+	end
+
+	return lines
 end
 
 local function GetMinimumTextWidth(frameWidth)
@@ -3816,11 +3837,14 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		local DescriptionText = LabelConfig.Description or "";
 		local BasedFrame = Instance.new("Frame")
 		local BasedLabel = Instance.new("TextLabel")
-		local DescriptionLabel = Instance.new("TextLabel")
+		local DescriptionFrame = Instance.new("Frame")
 		local LineFrame = Instance.new("Frame")
 		local BasedHandler = Instance.new("Frame")
 		local UIListLayout = Instance.new("UIListLayout")
+		local DescriptionLayout = Instance.new("UIListLayout")
 		local UICorner = Instance.new("UICorner")
+		local DescriptionLabels = {}
+		local CurrentDescription = DescriptionText ~= "" and DescriptionText or false
 
 		BasedFrame.Name = NeverLose.RandomString();
 		BasedFrame.Parent = Frame
@@ -3848,23 +3872,18 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		BasedLabel.TextYAlignment = Enum.TextYAlignment.Top
 		NeverLose:BindLocalizedText(BasedLabel, 14, 15)
 
-		DescriptionLabel.Name = NeverLose.RandomString();
-		DescriptionLabel.Parent = BasedFrame
-		DescriptionLabel.BackgroundTransparency = 1.000
-		DescriptionLabel.Position = UDim2.new(0, 11, 0, 26)
-		DescriptionLabel.Size = UDim2.new(0, 1, 0, 0)
-		DescriptionLabel.ZIndex = LayerIndex + 9
-		DescriptionLabel.Font = NeverLose.FontRegular
-		DescriptionLabel.Text = DescriptionText and tostring(DescriptionText) or ""
-		ApplyTextFont(DescriptionLabel, NeverLose.FontRegularFace, NeverLose.FontRegular)
-		DescriptionLabel.TextColor3 = Color3.fromRGB(220, 224, 232)
-		DescriptionLabel.TextSize = 14.000
-		DescriptionLabel.TextTransparency = 0.380
-		DescriptionLabel.TextWrapped = true
-		DescriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
-		DescriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
-		DescriptionLabel.Visible = DescriptionLabel.Text ~= ""
-		NeverLose:BindLocalizedText(DescriptionLabel, 14, 15)
+		DescriptionFrame.Name = NeverLose.RandomString();
+		DescriptionFrame.Parent = BasedFrame
+		DescriptionFrame.BackgroundTransparency = 1.000
+		DescriptionFrame.Position = UDim2.new(0, 11, 0, 26)
+		DescriptionFrame.Size = UDim2.new(0, 1, 0, 0)
+		DescriptionFrame.ZIndex = LayerIndex + 9
+		DescriptionFrame.Visible = CurrentDescription ~= false
+
+		DescriptionLayout.Parent = DescriptionFrame
+		DescriptionLayout.FillDirection = Enum.FillDirection.Vertical
+		DescriptionLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+		DescriptionLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 		LineFrame.Name = NeverLose.RandomString();
 		LineFrame.Parent = BasedFrame
@@ -3896,10 +3915,78 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		local UpdateQuery = LPH_NO_VIRTUALIZE(function()
 			if Query then
 				local queryText = tostring(BasedLabel.Text or "")
-				local descriptionValue = NormalizeDescriptionText(DescriptionLabel.Text) or ""
+				local descriptionValue = CurrentDescription and tostring(CurrentDescription):gsub("%s+", " ") or ""
 				Query.Idx = descriptionValue ~= "" and (queryText .. " " .. descriptionValue) or queryText
 			end;
 		end);
+
+		local function EnsureDescriptionLineCount(count)
+			while #DescriptionLabels < count do
+				local DescriptionLine = Instance.new("TextLabel")
+
+				DescriptionLine.Name = NeverLose.RandomString();
+				DescriptionLine.Parent = DescriptionFrame
+				DescriptionLine.BackgroundTransparency = 1.000
+				DescriptionLine.Size = UDim2.new(1, 0, 0, 0)
+				DescriptionLine.ZIndex = LayerIndex + 9
+				DescriptionLine.Font = NeverLose.FontRegular
+				ApplyTextFont(DescriptionLine, NeverLose.FontRegularFace, NeverLose.FontRegular)
+				DescriptionLine.TextColor3 = Color3.fromRGB(220, 224, 232)
+				DescriptionLine.TextSize = 14.000
+				DescriptionLine.TextTransparency = Signel:GetValue() and 0.380 or 1
+				DescriptionLine.TextWrapped = true
+				DescriptionLine.TextXAlignment = Enum.TextXAlignment.Left
+				DescriptionLine.TextYAlignment = Enum.TextYAlignment.Top
+				NeverLose:BindLocalizedText(DescriptionLine, 14, 15)
+
+				DescriptionLabels[#DescriptionLabels + 1] = DescriptionLine
+			end
+
+			while #DescriptionLabels > count do
+				local DescriptionLine = table.remove(DescriptionLabels)
+
+				if DescriptionLine then
+					DescriptionLine:Destroy()
+				end
+			end
+		end
+
+		local function SetDescriptionTransparency(value)
+			for _, DescriptionLine in ipairs(DescriptionLabels) do
+				NeverLose.PlayAnimate(DescriptionLine, SlowyTween, {
+					TextTransparency = value
+				})
+			end
+		end
+
+		local function UpdateDescriptionLayout(maxWidth)
+			local DescriptionLines = CurrentDescription and GetDescriptionLines(CurrentDescription) or {}
+			local TotalHeight = 0
+
+			EnsureDescriptionLineCount(#DescriptionLines)
+
+			for Index, DescriptionLine in ipairs(DescriptionLabels) do
+				local RawText = DescriptionLines[Index] or ""
+				local DisplayText = RawText ~= "" and RawText or " "
+
+				if DescriptionLine.Text ~= DisplayText then
+					DescriptionLine.Text = DisplayText
+				end
+
+				local LineHeight = math.max(15, GetTextObjectBounds(DescriptionLine, Vector2.new(maxWidth, math.huge)).Y)
+				DescriptionLine.Size = UDim2.new(1, 0, 0, LineHeight)
+				TotalHeight = TotalHeight + LineHeight
+			end
+
+			if #DescriptionLines > 1 then
+				TotalHeight = TotalHeight + (DescriptionLayout.Padding.Offset * (#DescriptionLines - 1))
+			end
+
+			DescriptionFrame.Visible = #DescriptionLines > 0
+			DescriptionFrame.Size = UDim2.new(0, maxWidth, 0, TotalHeight)
+
+			return TotalHeight
+		end
 
 		local UpdateLayout = LPH_NO_VIRTUALIZE(function()
 			while BasedFrame.AbsoluteSize.X <= 0 do
@@ -3911,7 +3998,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 			local reservedWidth = handlerWidth > 0 and (handlerWidth + 20) or 0
 			local minimumLabelWidth = GetMinimumTextWidth(BasedFrame.AbsoluteSize.X)
 			local maxWidth = math.max(minimumLabelWidth, BasedFrame.AbsoluteSize.X - 26 - reservedWidth)
-			local descriptionValue = NormalizeDescriptionText(DescriptionLabel.Text) or ""
+			local descriptionValue = CurrentDescription or ""
 			local titleWrapped = Warp ~= false or descriptionValue ~= ""
 			local spacing = 0
 			local descriptionHeight = 0
@@ -3924,14 +4011,12 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 			local titleHeight = titleWrapped and titleSize.Y or math.max(18, titleSize.Y)
 
 			if descriptionValue ~= "" then
-				if DescriptionLabel.Text ~= descriptionValue then
-					DescriptionLabel.Text = descriptionValue
-				end
-
 				spacing = 1
-				descriptionHeight = GetTextObjectBounds(DescriptionLabel, Vector2.new(maxWidth, math.huge)).Y
-			elseif DescriptionLabel.Text ~= "" then
-				DescriptionLabel.Text = ""
+				descriptionHeight = UpdateDescriptionLayout(maxWidth)
+			else
+				EnsureDescriptionLineCount(0)
+				DescriptionFrame.Visible = false
+				DescriptionFrame.Size = UDim2.new(0, maxWidth, 0, 0)
 			end
 
 			local controlHeight = math.max(24, handlerHeight)
@@ -3939,9 +4024,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 			local finalHeight = math.max(descriptionValue ~= "" and 42 or 32, topPadding + textHeight + bottomPadding, controlHeight + 8)
 
 			BasedLabel.Size = UDim2.new(0, maxWidth, 0, titleHeight)
-			DescriptionLabel.Visible = descriptionValue ~= ""
-			DescriptionLabel.Position = UDim2.new(0, 11, 0, topPadding + titleHeight + spacing)
-			DescriptionLabel.Size = UDim2.new(0, maxWidth, 0, descriptionHeight)
+			DescriptionFrame.Position = UDim2.new(0, 11, 0, topPadding + titleHeight + spacing)
 			BasedHandler.Position = UDim2.new(1, -15, 0, math.max(4, math.floor((finalHeight - controlHeight) / 2)))
 			BasedHandler.Size = UDim2.new(0, handlerWidth, 0, controlHeight)
 
@@ -3965,7 +4048,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 
 		handle.SetRender = LPH_NO_VIRTUALIZE(function(value)
 			NeverLose.PlayAnimate(BasedLabel, SlowyTween, { TextTransparency = value and 0.18 or 1 })
-			NeverLose.PlayAnimate(DescriptionLabel, SlowyTween, { TextTransparency = value and 0.38 or 1 })
+			SetDescriptionTransparency(value and 0.38 or 1)
 			NeverLose.PlayAnimate(LineFrame, SlowyTween, { BackgroundTransparency = value and 0.78 or 1 })
 		end);
 
@@ -3976,8 +4059,7 @@ function NeverLose:RegisiterItem(Frame: Frame , Signel)
 		end;
 
 		function handle:SetDescription(t)
-			local descriptionText = NormalizeDescriptionText(t)
-			DescriptionLabel.Text = descriptionText or ""
+			CurrentDescription = NormalizeDescriptionText(t) or false
 			UpdateQuery()
 			UpdateLayout()
 		end;
