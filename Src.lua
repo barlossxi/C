@@ -154,6 +154,8 @@ NeverLose.LucideAliases = {
 	["magnifying-glass"] = "search",
 	["three-dots-horizontal"] = "ellipsis",
 };
+NeverLose.DropdownImageMap = {};
+NeverLose.DropdownImageSize = 18;
 local ZeroVector2 = Vector2.zero or Vector2.new(0,0);
 
 local function IsTextIconObject(Object)
@@ -172,6 +174,102 @@ local function NormalizeIconName(Icon)
 	end;
 
 	return Normalized;
+end
+
+local function IsDropdownEmojiCodepoint(Codepoint)
+	return Codepoint and (
+		(Codepoint >= 0x1F000 and Codepoint <= 0x1FAFF)
+		or (Codepoint >= 0x2300 and Codepoint <= 0x23FF)
+		or (Codepoint >= 0x2600 and Codepoint <= 0x27BF)
+	)
+end
+
+local function StripDropdownEmoji(Text)
+	if type(Text) ~= "string" or Text == "" or type(utf8) ~= "table" then
+		return Text or "", false
+	end
+
+	local Success, Codepoint = pcall(utf8.codepoint, Text, 1)
+
+	if not Success or not IsDropdownEmojiCodepoint(Codepoint) then
+		return Text, false
+	end
+
+	local Cursor = utf8.offset(Text, 2, 1)
+
+	while Cursor and Cursor <= #Text do
+		local NextSuccess, NextCodepoint = pcall(utf8.codepoint, Text, Cursor)
+
+		if not NextSuccess or (NextCodepoint ~= 0xFE0F and NextCodepoint ~= 0x200D and not (NextCodepoint >= 0x1F3FB and NextCodepoint <= 0x1F3FF)) then
+			break
+		end
+
+		Cursor = utf8.offset(Text, 2, Cursor)
+	end
+
+	return string.gsub(Cursor and string.sub(Text, Cursor) or "", "^%s+", ""), true
+end
+
+local function GetDropdownText(Value)
+	if typeof(Value) == "table" then
+		local ExplicitText = Value.Display or Value.Text or Value.Label or Value.Name or Value.Value
+
+		if ExplicitText ~= nil then
+			return GetDropdownText(ExplicitText)
+		end
+
+		local TextValues = {}
+
+		for Key, Enabled in next, Value do
+			if typeof(Key) == "number" then
+				table.insert(TextValues, GetDropdownText(Enabled))
+			elseif Enabled == true then
+				table.insert(TextValues, GetDropdownText(Key))
+			end
+		end
+
+		return table.concat(TextValues, " , ")
+	end
+
+	local DisplayText = StripDropdownEmoji(tostring(Value or ""))
+	return DisplayText
+end
+
+local function GetDropdownOptionData(Value)
+	local Text = Value
+	local Image = nil
+	local Key = Value
+
+	if typeof(Value) == "table" then
+		Text = Value.Display or Value.Text or Value.Label or Value.Name or Value.Value or Value[1]
+		Image = Value.Image or Value.ImageId or Value.Icon or Value.IconId
+		Key = Value.Key or Value.Value or Value.Name or Value[1] or Text
+
+		if Text == nil then
+			return GetDropdownText(Value), nil, false, Key
+		end
+	end
+
+	local RawText = tostring(Text or "")
+	local DisplayText, HasLeadingEmoji = StripDropdownEmoji(RawText)
+	local MappedImage = Image
+	local ImageMap = NeverLose.DropdownImageMap
+
+	if MappedImage == nil and type(ImageMap) == "table" then
+		MappedImage = ImageMap[Key] or ImageMap[RawText] or ImageMap[DisplayText]
+	end
+
+	return DisplayText, MappedImage, MappedImage ~= nil or HasLeadingEmoji, Key
+end
+
+local function SetDropdownImage(ImageObject, ImageValue, Visible)
+	local IconData = ImageValue and NeverLose:GetCustomIcon(ImageValue) or nil
+
+	ImageObject.Image = IconData and IconData.Url or ""
+	ImageObject.ImageRectOffset = IconData and IconData.ImageRectOffset or ZeroVector2
+	ImageObject.ImageRectSize = IconData and IconData.ImageRectSize or ZeroVector2
+	ImageObject.ImageColor3 = IconData and IconData.Custom and Color3.new(1,1,1) or Color3.fromRGB(223,223,223)
+	ImageObject.Visible = Visible == true
 end
 
 local function ResolveLocalIconAsset(Icon)
@@ -3044,6 +3142,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 
 		local Dropdown = Instance.new("Frame")
 		local DropdownIcon = Instance.new("TextLabel")
+		local DropdownImage = Instance.new("ImageLabel")
 		local UICorner = Instance.new("UICorner")
 		local UIStroke = Instance.new("UIStroke")
 		local BasedLabel = Instance.new("TextLabel")
@@ -3073,12 +3172,28 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		DropdownIcon.TextWrapped = true
 		NeverLose:SetIconMode(DropdownIcon , "chevron-down" , true)
 
+		DropdownImage.Name = NeverLose.RandomString();
+		DropdownImage.Parent = Dropdown
+		DropdownImage.AnchorPoint = Vector2.new(0, 0.5)
+		DropdownImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		DropdownImage.BackgroundTransparency = 1.000
+		DropdownImage.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		DropdownImage.BorderSizePixel = 0
+		DropdownImage.Position = UDim2.new(0, 7, 0.5, 0)
+		DropdownImage.Size = UDim2.fromOffset(NeverLose.DropdownImageSize, NeverLose.DropdownImageSize)
+		DropdownImage.ZIndex = ZINdex + 14
+		DropdownImage.ScaleType = Enum.ScaleType.Fit
+		DropdownImage.Visible = false
+
 		UICorner.CornerRadius = UDim.new(0, 6)
 		UICorner.Parent = Dropdown
 
 		UIStroke.Transparency = 0.780
 		UIStroke.Color = NeverLose.StrokeColor
 		UIStroke.Parent = Dropdown
+
+		local SelectedDisplayText, SelectedImageValue, HasSelectedImage = GetDropdownOptionData(Config.Default)
+		local SelectedLabelText = SelectedDisplayText ~= "" and SelectedDisplayText or NeverLose.ParseDropdown(Config.Default)
 
 		BasedLabel.Name = NeverLose.RandomString();
 		BasedLabel.Parent = Dropdown
@@ -3088,16 +3203,29 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		BasedLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		BasedLabel.BorderSizePixel = 0
 		BasedLabel.ClipsDescendants = true
-		BasedLabel.Position = UDim2.new(0, 8, 0.5, 0)
-		BasedLabel.Size = UDim2.new(1, -30, 0, 16)
+		BasedLabel.Position = UDim2.new(0, HasSelectedImage and 30 or 8, 0.5, 0)
+		BasedLabel.Size = UDim2.new(1, HasSelectedImage and -60 or -30, 0, 16)
 		BasedLabel.ZIndex = ZINdex + 14
 		BasedLabel.Font = NeverLose.FontMedium
 		ApplyTextFont(BasedLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
-		BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
+		BasedLabel.Text = SelectedLabelText;
 		BasedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		BasedLabel.TextSize = 14.000
 		BasedLabel.TextTransparency = 0.380
 		BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
+		SetDropdownImage(DropdownImage, SelectedImageValue, HasSelectedImage)
+
+		local UpdateDropdownVisual = LPH_NO_VIRTUALIZE(function(Value)
+			local DisplayText, ImageValue, HasImage = GetDropdownOptionData(Value)
+			local ParsedText = DisplayText ~= "" and DisplayText or NeverLose.ParseDropdown(Value)
+
+			BasedLabel.Text = ParsedText
+			BasedLabel.Position = UDim2.new(0, HasImage and 30 or 8, 0.5, 0)
+			BasedLabel.Size = UDim2.new(1, HasImage and -60 or -30, 0, 16)
+			SetDropdownImage(DropdownImage, ImageValue, HasImage)
+		end)
+
+		UpdateDropdownVisual(Config.Default);
 
 		do
 			local UIGradient = Instance.new("UIGradient")
@@ -3134,6 +3262,10 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 					TextTransparency = 0.200
 				});
 
+				NeverLose.PlayAnimate(DropdownImage , SlowyTween , {
+					ImageTransparency = 0.200
+				});
+
 				NeverLose.PlayAnimate(UIStroke , SlowyTween , {
 					Transparency = 0.780
 				});
@@ -3148,6 +3280,10 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 
 				NeverLose.PlayAnimate(DropdownIcon , SlowyTween , {
 					TextTransparency = 1
+				});
+
+				NeverLose.PlayAnimate(DropdownImage , SlowyTween , {
+					ImageTransparency = 1
 				});
 
 				NeverLose.PlayAnimate(UIStroke , SlowyTween , {
@@ -3381,8 +3517,10 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 
 			local Lastone;
 			for i,Value in next , Config.Values do
+				local ItemDisplayText, ItemImageValue, HasItemImage = GetDropdownOptionData(Value)
 				local ItemFrame = Instance.new("Frame")
 				local ItemLabel = Instance.new("TextLabel")
+				local ItemImage = Instance.new("ImageLabel")
 				local UICorner = Instance.new("UICorner")
 
 				ItemFrame.Name = NeverLose.RandomString();
@@ -3400,16 +3538,29 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				ItemLabel.BackgroundTransparency = 1.000
 				ItemLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				ItemLabel.BorderSizePixel = 0
-				ItemLabel.Position = UDim2.new(0, 13, 0, 4)
+				ItemLabel.Position = UDim2.new(0, HasItemImage and 28 or 13, 0, 4)
 				ItemLabel.Size = UDim2.new(0,1, 0, 18)
 				ItemLabel.ZIndex = ZINdex + 1258
 				ItemLabel.Font = NeverLose.FontMedium
 				ApplyTextFont(ItemLabel, NeverLose.FontMediumFace, NeverLose.FontMedium)
-				ItemLabel.Text = tostring(Value);
+				ItemLabel.Text = ItemDisplayText;
 				ItemLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 				ItemLabel.TextSize = 14.000
 				ItemLabel.TextTransparency = 0.280
 				ItemLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+				ItemImage.Name = NeverLose.RandomString();
+				ItemImage.Parent = ItemFrame
+				ItemImage.AnchorPoint = Vector2.new(0, 0.5)
+				ItemImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+				ItemImage.BackgroundTransparency = 1.000
+				ItemImage.BorderColor3 = Color3.fromRGB(0, 0, 0)
+				ItemImage.BorderSizePixel = 0
+				ItemImage.Position = UDim2.new(0, 4, 0.5, 0)
+				ItemImage.Size = UDim2.fromOffset(NeverLose.DropdownImageSize, NeverLose.DropdownImageSize)
+				ItemImage.ZIndex = ZINdex + 1259
+				ItemImage.ScaleType = Enum.ScaleType.Fit
+				SetDropdownImage(ItemImage, ItemImageValue, HasItemImage)
 
 				UICorner.CornerRadius = UDim.new(0, 10)
 				UICorner.Parent = ItemFrame
@@ -3428,7 +3579,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 					Icon.BackgroundTransparency = 1.000
 					Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
 					Icon.BorderSizePixel = 0
-					Icon.Position = UDim2.new(0, 4, 0.5, 0)
+					Icon.Position = UDim2.new(0, HasItemImage and 26 or 4, 0.5, 0)
 					Icon.Size = UDim2.new(0, 18, 0, 18)
 					Icon.ZIndex = ZINdex + 1259
 					Icon.TextColor3 = Color3.fromRGB(223, 223, 223)
@@ -3441,7 +3592,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 						if DropdownLib.IsMatch(Value) then
 							NeverLose.PlayAnimate(ItemLabel , VSlowTween , {
 								TextTransparency = 0.220,
-								Position = UDim2.new(0, 28, 0, 4)
+								Position = UDim2.new(0, HasItemImage and 50 or 28, 0, 4)
 							})
 
 							NeverLose.PlayAnimate(Icon , SlowyTween , {
@@ -3457,7 +3608,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 
 							NeverLose.PlayAnimate(ItemLabel , VSlowTween , {
 								TextTransparency = 0.550,
-								Position = UDim2.new(0, 13, 0, 4)
+								Position = UDim2.new(0, HasItemImage and 28 or 13, 0, 4)
 							})
 						end;
 					end);
@@ -3520,7 +3671,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 
 						MarkItem();
 
-						BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
+						UpdateDropdownVisual(Config.Default);
 
 						Config.Callback(Config.Default);
 					end));
@@ -3534,7 +3685,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 							task.spawn(v);
 						end;
 
-						BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
+						UpdateDropdownVisual(Config.Default);
 
 						Config.Callback(Config.Default);
 					end));
@@ -3553,7 +3704,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 		function DropdownLib:SetValue(v)
 			Config.Default = v;
 
-			BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
+			UpdateDropdownVisual(Config.Default);
 
 			for i,v in next , DropdownLib.Refuse do
 				task.spawn(v);
@@ -3576,7 +3727,7 @@ function NeverLose:RegisiterHandler(Handler: Frame , Signal)
 				end
 			end
 			DropdownLib:Generate()
-			BasedLabel.Text = NeverLose.ParseDropdown(Config.Default);
+			UpdateDropdownVisual(Config.Default);
 		end
 		if Config.Flag then
 			NeverLose.Flags[Config.Flag] = DropdownLib;
