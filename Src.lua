@@ -145,7 +145,7 @@ local NeverLose = {};
 
 NeverLose.BuiltInRegular = Font.new('rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json',Enum.FontWeight.Regular,Enum.FontStyle.Normal);
 NeverLose.BuiltInBold = Font.new('rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json',Enum.FontWeight.Bold,Enum.FontStyle.Normal);
-NeverLose.IconModuleUrl = "https://raw.githubusercontent.com/deividcomsono/lucide-roblox-direct/refs/heads/main/source.lua";
+NeverLose.IconModuleUrl = "https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/Main-v2.lua";
 NeverLose.LucideAliases = {
 	["chevron-large-right"] = "chevron-right",
 	["chevron-small-down"] = "chevron-down",
@@ -343,7 +343,7 @@ local function EnsureImageIcon(TextObject)
 end
 
 function NeverLose:SetIconModule(Module)
-	if typeof(Module) == "table" and typeof(Module.GetAsset) == "function" then
+	if typeof(Module) == "table" and (typeof(Module.GetAsset) == "function" or typeof(Module.Icon2) == "function" or typeof(Module.Icon) == "function") then
 		self.IconModule = Module;
 		self.IconModuleAttempted = true;
 	end;
@@ -370,14 +370,18 @@ function NeverLose:EnsureIconModule()
 		return Loader(game:HttpGet(self.IconModuleUrl))();
 	end);
 
-	if Success and typeof(Module) == "table" and typeof(Module.GetAsset) == "function" then
+	if Success and typeof(Module) == "table" and (typeof(Module.GetAsset) == "function" or typeof(Module.Icon2) == "function" or typeof(Module.Icon) == "function") then
 		self.IconModule = Module;
+
+		if typeof(Module.SetIconsType) == "function" then
+			pcall(Module.SetIconsType , "lucide");
+		end;
 	end;
 
 	return self.IconModule;
 end
 
-function NeverLose:GetLucideIcon(Icon)
+function NeverLose:GetWindIcon(Icon)
 	local Module = self:EnsureIconModule();
 	local Normalized = NormalizeIconName(Icon);
 
@@ -386,17 +390,52 @@ function NeverLose:GetLucideIcon(Icon)
 	end;
 
 	local Candidates = {Normalized};
-	local Alias = self.LucideAliases[Normalized];
+	local IconType , IconName = string.match(Normalized , "^([^:]+):(.+)$");
+	local Alias = self.LucideAliases[Normalized] or self.LucideAliases[IconName or Normalized];
 
-	if Alias and Alias ~= Normalized then
-		table.insert(Candidates , Alias);
+	if Alias and (IconType and IconType ~= "" or Alias ~= Normalized) then
+		table.insert(Candidates , IconType and (IconType .. ":" .. Alias) or Alias);
 	end;
 
-	for _ , Name in ipairs(Candidates) do
-		local Success , IconData = pcall(Module.GetAsset , Name);
+	for _ , Name in next, Candidates do
+		local Success , IconData = pcall(function()
+			if typeof(Module.GetAsset) == "function" then
+				return Module.GetAsset(Name);
+			end;
+
+			if typeof(Module.Icon2) == "function" then
+				return Module.Icon2(Name, nil, true);
+			end;
+
+			return Module.Icon(Name, nil, true);
+		end);
 
 		if Success and IconData then
-			return IconData;
+			if typeof(IconData) == "string" then
+				return {
+					Url = IconData,
+					ImageRectOffset = ZeroVector2,
+					ImageRectSize = ZeroVector2,
+					Custom = false,
+				};
+			end;
+
+			if typeof(IconData) == "table" and IconData[1] and IconData[2] then
+				local IconInfo = IconData[2];
+
+				return {
+					Url = IconData[1],
+					ImageRectOffset = IconInfo.ImageRectOffset or IconInfo.ImageRectPosition or ZeroVector2,
+					ImageRectSize = IconInfo.ImageRectSize or ZeroVector2,
+					Parts = IconInfo.Parts,
+					Type = IconType,
+					Custom = false,
+				};
+			end;
+
+			if typeof(IconData) == "table" and IconData.Url then
+				return IconData;
+			end;
 		end;
 	end;
 
@@ -441,7 +480,7 @@ function NeverLose:GetCustomIcon(Icon)
 		};
 	end;
 
-	return self:GetLucideIcon(Icon);
+	return self:GetWindIcon(Icon);
 end
 
 function NeverLose:ClearImageIcon(TextObject)
@@ -482,6 +521,103 @@ function NeverLose:SetImageIcon(TextObject , IconData)
 	SyncImageIcon(TextObject);
 
 	return true;
+end
+
+function NeverLose:SetImageObjectIcon(ImageObject , Icon)
+	if not ImageObject or not (ImageObject:IsA("ImageLabel") or ImageObject:IsA("ImageButton")) then
+		return false;
+	end;
+
+	for _ , Child in next, ImageObject:GetChildren() do
+		if Child:GetAttribute("NeverLoseIconPart") then
+			Child:Destroy();
+		end;
+	end;
+
+	local IconData = self:GetCustomIcon(Icon);
+
+	if not IconData then
+		ImageObject.Image = "";
+		ImageObject.ImageRectOffset = ZeroVector2;
+		ImageObject.ImageRectSize = ZeroVector2;
+		ImageObject.Visible = false;
+		ImageObject:SetAttribute("PreserveOriginalColor" , false);
+		return false;
+	end;
+
+	ImageObject.Image = IconData.Url or "";
+	ImageObject.ImageRectOffset = IconData.ImageRectOffset or ZeroVector2;
+	ImageObject.ImageRectSize = IconData.ImageRectSize or ZeroVector2;
+	ImageObject.Visible = ImageObject.Image ~= "";
+	ImageObject:SetAttribute("PreserveOriginalColor" , IconData.Custom == true);
+
+	if type(IconData.Parts) == "table" then
+		for _ , Part in next, IconData.Parts do
+			local PartName = tostring(Part);
+			local PartIcon = self:GetCustomIcon(IconData.Type and (IconData.Type .. ":" .. PartName) or PartName);
+
+			if PartIcon then
+				local PartImage = Instance.new("ImageLabel");
+				PartImage.Name = "__NeverLoseIconPart";
+				PartImage.BackgroundTransparency = 1;
+				PartImage.Size = UDim2.fromScale(1,1);
+				PartImage.ZIndex = ImageObject.ZIndex;
+				PartImage.Image = PartIcon.Url or "";
+				PartImage.ImageRectOffset = PartIcon.ImageRectOffset or ZeroVector2;
+				PartImage.ImageRectSize = PartIcon.ImageRectSize or ZeroVector2;
+				PartImage:SetAttribute("NeverLoseIconPart" , true);
+				PartImage.Parent = ImageObject;
+			end;
+		end;
+	end;
+
+	return true;
+end
+
+function NeverLose:SetImageObjectColor(ImageObject , Color)
+	if not ImageObject or not (ImageObject:IsA("ImageLabel") or ImageObject:IsA("ImageButton")) then
+		return;
+	end;
+
+	local ImageColor = ImageObject:GetAttribute("PreserveOriginalColor") and Color3.new(1,1,1) or Color;
+	ImageObject.ImageColor3 = ImageColor;
+
+	for _ , Child in next, ImageObject:GetChildren() do
+		if Child:GetAttribute("NeverLoseIconPart") then
+			Child.ImageColor3 = ImageColor;
+		end;
+	end;
+end
+
+function NeverLose:AnimateImageObjectIcon(ImageObject , Transparency , Color)
+	if not ImageObject or not (ImageObject:IsA("ImageLabel") or ImageObject:IsA("ImageButton")) then
+		return;
+	end;
+
+	local TargetColor = Color and (ImageObject:GetAttribute("PreserveOriginalColor") and Color3.new(1,1,1) or Color) or nil;
+	local ImageProperties = {
+		ImageTransparency = Transparency
+	};
+
+	if TargetColor then
+		ImageProperties.ImageColor3 = TargetColor;
+	end;
+
+	NeverLose.PlayAnimate(ImageObject , SlowyTween , ImageProperties);
+
+	for _ , Child in next, ImageObject:GetChildren() do
+		if Child:GetAttribute("NeverLoseIconPart") then
+			local PartProperties = {
+				ImageTransparency = Transparency
+			};
+
+			if TargetColor then
+				PartProperties.ImageColor3 = TargetColor;
+			end;
+
+			NeverLose.PlayAnimate(Child , SlowyTween , PartProperties);
+		end;
+	end;
 end
 
 local function ResolveFont(name, fallback)
@@ -677,8 +813,8 @@ NeverLose.MainColor = Color3.fromRGB(8, 8, 13);
 NeverLose.RegisiteryColor = {};
 NeverLose.NameRegisitry = {};
 NeverLose.IsMosueOverOtherFrame = false;
-NeverLose.GlobalLogo = "rbxassetid://120358385035996";
-NeverLose.ImageColorMapping = "rbxassetid://4155801252";
+NeverLose.GlobalLogo = "rbxassetid://108790254773942";
+NeverLose.ImageColorMapping = "rbxassetid://108790254773942";
 
 if getcustomasset then
 	local link = "https://github.com/4lpaca-pin/NeverLose/blob/main/assets/%s?raw=true";
@@ -5411,13 +5547,14 @@ function NeverLose:CreateWindow(Config)
 			Type = "Double"
 		});
 
+		local TabIconColor = typeof(Config.IconColor) == "Color3" and Config.IconColor or NeverLose.AccentColor;
 		local Tab = {
 			Signal = NeverLose:CreateSignal(false);
 		};
 
 		local TabButton = Instance.new("Frame")
 		local UICorner = Instance.new("UICorner")
-		local TabIcon = Instance.new("TextLabel")
+		local TabIcon = Instance.new("ImageLabel")
 		local TabContentLabel = Instance.new("TextLabel")
 
 		Tab.Idx = TabButton;
@@ -5444,10 +5581,11 @@ function NeverLose:CreateWindow(Config)
 		TabIcon.Position = UDim2.new(0, 5, 0.5, 0)
 		TabIcon.Size = UDim2.new(0, 18, 0, 18)
 		TabIcon.ZIndex = 9
-		TabIcon.TextColor3 = NeverLose.AccentColor
-		TabIcon.TextSize = 15.000
-		TabIcon.TextWrapped = true
-		NeverLose:SetIconMode(TabIcon , Config.Icon , true)
+		TabIcon.ScaleType = Enum.ScaleType.Fit
+		TabIcon.ImageColor3 = TabIconColor
+		TabIcon.ImageTransparency = 0
+		NeverLose:SetImageObjectIcon(TabIcon , Config.Icon)
+		NeverLose:SetImageObjectColor(TabIcon , TabIconColor)
 
 		TabContentLabel.Name = NeverLose.RandomString();
 		TabContentLabel.Parent = TabButton
@@ -5518,8 +5656,8 @@ function NeverLose:CreateWindow(Config)
 			LeftScroll.CanvasSize = UDim2.fromOffset(0,UIListLayout.AbsoluteContentSize.Y + ScrollPaddingTop + ScrollPaddingBottom)
 		end)))
 
-		NeverLose:AddSignal(TabIcon:GetPropertyChangedSignal('TextTransparency'):Connect(LPH_NO_VIRTUALIZE(function()
-			if TabIcon.TextTransparency > 0.4 then
+		NeverLose:AddSignal(TabIcon:GetPropertyChangedSignal('ImageTransparency'):Connect(LPH_NO_VIRTUALIZE(function()
+			if TabIcon.ImageTransparency > 0.4 then
 				UIListLayout.Parent = nil;
 				TabFrame.Visible = false;
 				TabFrame.Parent = nil
@@ -5538,10 +5676,7 @@ function NeverLose:CreateWindow(Config)
 					BackgroundTransparency = 0.34
 				})
 
-				NeverLose.PlayAnimate(TabIcon , SlowyTween , {
-					TextTransparency = 0,
-					TextColor3 = NeverLose.AccentColor
-				})
+				NeverLose:AnimateImageObjectIcon(TabIcon , 0 , TabIconColor)
 
 				NeverLose.PlayAnimate(TabContentLabel , SlowyTween , {
 					TextTransparency = 0
@@ -5551,10 +5686,7 @@ function NeverLose:CreateWindow(Config)
 					BackgroundTransparency = 1
 				})
 
-				NeverLose.PlayAnimate(TabIcon , SlowyTween , {
-					TextTransparency = 0.42,
-					TextColor3 = Color3.fromRGB(252, 252, 252)
-				})
+				NeverLose:AnimateImageObjectIcon(TabIcon , 0.42 , Color3.fromRGB(252, 252, 252))
 
 				NeverLose.PlayAnimate(TabContentLabel , SlowyTween , {
 					TextTransparency = 0.42
@@ -5623,9 +5755,7 @@ function NeverLose:CreateWindow(Config)
 					BackgroundTransparency = 1
 				})
 
-				NeverLose.PlayAnimate(TabIcon , SlowyTween , {
-					TextTransparency = 1,
-				})
+				NeverLose:AnimateImageObjectIcon(TabIcon , 1)
 
 				NeverLose.PlayAnimate(TabContentLabel , SlowyTween , {
 					TextTransparency = 1
