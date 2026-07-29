@@ -6060,10 +6060,10 @@ function NeverLose:CreateWindow(Config)
 		local Watermark_lb = {};
 		local Watermark = Instance.new("Frame")
 		local UIListLayout = Instance.new("UIListLayout")
-		local BlockSize = 72;
 		local LogoSize = 48;
-		local BlockPadding = 10;
-		local CornerRadius = 16;
+		local BlockSize = 56;
+		local BlockPadding = 8;
+		local CornerRadius = 12;
 
 		local function IsImageSource(Value)
 			if typeof(Value) ~= "string" or Value == "" then
@@ -6232,6 +6232,80 @@ function NeverLose:CreateWindow(Config)
 			InnerBlock.Update();
 			Shadow:Render(true);
 
+			do
+				local Hit = Instance.new("ImageButton");
+				local Dragging = false;
+				local DragMoved = false;
+				local DragStart = nil;
+				local StartPos = nil;
+				local DragThreshold = 6;
+
+				Hit.Name = NeverLose.RandomString();
+				Hit.Parent = Frame;
+				Hit.BackgroundTransparency = 1;
+				Hit.BorderSizePixel = 0;
+				Hit.Size = UDim2.fromScale(1, 1);
+				Hit.ZIndex = Frame.ZIndex + 20;
+				Hit.ImageTransparency = 1;
+				Hit.AutoButtonColor = false;
+
+				NeverLose:AddSignal(Hit.InputBegan:Connect(function(Input)
+					if Input.UserInputType ~= Enum.UserInputType.MouseButton1 and Input.UserInputType ~= Enum.UserInputType.Touch then
+						return;
+					end;
+
+					Dragging = true;
+					DragMoved = false;
+					DragStart = Input.Position;
+					StartPos = Watermark.Position;
+
+					local EndConnection;
+					EndConnection = Input.Changed:Connect(function()
+						if Input.UserInputState == Enum.UserInputState.End then
+							Dragging = false;
+
+							if EndConnection then
+								EndConnection:Disconnect();
+							end;
+						end;
+					end);
+				end));
+
+				NeverLose:AddSignal(UserInputService.InputChanged:Connect(function(Input)
+					if not Dragging then
+						return;
+					end;
+
+					if Input.UserInputType ~= Enum.UserInputType.MouseMovement and Input.UserInputType ~= Enum.UserInputType.Touch then
+						return;
+					end;
+
+					local Delta = Input.Position - DragStart;
+
+					if not DragMoved and (math.abs(Delta.X) > DragThreshold or math.abs(Delta.Y) > DragThreshold) then
+						DragMoved = true;
+					end;
+
+					if DragMoved then
+						NeverLose.PlayAnimate(Watermark , FastTween , {
+							Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
+						});
+					end;
+				end));
+
+				NeverLose:AddSignal(Hit.MouseButton1Click:Connect(function()
+					if DragMoved then
+						return;
+					end;
+
+					if type(InnerBlock._Click) == "function" then
+						InnerBlock._Click();
+					end;
+				end));
+
+				InnerBlock._Hit = Hit;
+			end;
+
 			function InnerBlock:SetVisible(v)
 				InnerBlock.Visible = v;
 
@@ -6311,9 +6385,9 @@ function NeverLose:CreateWindow(Config)
 			end;
 
 			function InnerBlock:Input(func)
-				local c,s = NeverLose:CreateInput(Frame,func);
+				InnerBlock._Click = func;
 
-				return s;
+				return InnerBlock._Hit;
 			end;
 
 			return InnerBlock;
