@@ -807,6 +807,12 @@ NeverLose.Scales = {
 
 NeverLose.IconColor = Color3.fromRGB(255, 255, 255);
 NeverLose.ScreenGui = GlobalWindow;
+
+GlobalWindow.Destroying:Connect(function()
+	if NeverLose.CleanupBlurArtifacts then
+		NeverLose.CleanupBlurArtifacts();
+	end;
+end);
 NeverLose.Flags = {};
 NeverLose.AccentColor = Color3.fromRGB(0, 170, 255);
 NeverLose.MainColor = Color3.fromRGB(8, 8, 13);
@@ -1598,6 +1604,43 @@ end);
 
 NeverLose.EnabledBlur = true;
 NeverLose.BlurModuleParent = workspace.CurrentCamera;
+NeverLose.BlurCleanups = {};
+
+NeverLose.CleanupBlurArtifacts = LPH_NO_VIRTUALIZE(function()
+	local Cleanups = NeverLose.BlurCleanups;
+
+	if type(Cleanups) == "table" then
+		for Index = #Cleanups , 1 , -1 do
+			local Cleanup = Cleanups[Index];
+			Cleanups[Index] = nil;
+			pcall(Cleanup);
+		end;
+	end;
+
+	local LightingService = cloneref(game:GetService('Lighting'));
+
+	for _ , Child in next , LightingService:GetChildren() do
+		if Child.Name == "SmoothX" and (Child:IsA("DepthOfFieldEffect") or Child:IsA("BlurEffect")) then
+			pcall(function()
+				Child:Destroy();
+			end);
+		end;
+	end;
+
+	local Camera = workspace.CurrentCamera or NeverLose.BlurModuleParent;
+
+	if Camera then
+		for _ , Child in next , Camera:GetChildren() do
+			if Child.Name == "SmoothX" and Child:IsA("BasePart") then
+				pcall(function()
+					Child:Destroy();
+				end);
+			end;
+		end;
+	end;
+end);
+
+NeverLose.CleanupBlurArtifacts();
 
 NeverLose.GetCalculatePosition = LPH_NO_VIRTUALIZE(function(planePos, planeNormal, rayOrigin, rayDirection)
 	local n = planeNormal;
@@ -1616,9 +1659,12 @@ NeverLose.CreateBlurModule = LPH_NO_VIRTUALIZE(function(self , Frame , Signal)
 		return NeverLose:AddSignal(Instance.new('BindableEvent').Event:Connect(function() return "nl"; end));	
 	end;
 
+	NeverLose.CleanupBlurArtifacts();
+
 	local Part = Instance.new('Part',NeverLose.BlurModuleParent);
 	local DepthOfField = Instance.new('DepthOfFieldEffect',cloneref(game:GetService('Lighting')));
 	local BlockMesh = Instance.new("BlockMesh");
+	local Closed = false;
 
 	BlockMesh.Parent = Part;
 
@@ -1645,9 +1691,14 @@ NeverLose.CreateBlurModule = LPH_NO_VIRTUALIZE(function(self , Frame , Signal)
 	local disconnect;
 
 	local UpdateFunction = function()
+		if Closed then
+			return false;
+		end;
+
 		local IsWindowActive = Signal:GetValue();
 
 		if IsWindowActive and not NeverLose.Global3DRenderMode then
+			DepthOfField.Enabled = true;
 
 			NeverLose.PlayAnimate(DepthOfField,TweenInfo.new(0.1),{
 				NearIntensity = 1
@@ -1660,9 +1711,8 @@ NeverLose.CreateBlurModule = LPH_NO_VIRTUALIZE(function(self , Frame , Signal)
 
 			Part.Parent = NeverLose.BlurModuleParent;
 		else
-			NeverLose.PlayAnimate(DepthOfField,TweenInfo.new(0.1),{
-				NearIntensity = 0
-			})
+			DepthOfField.NearIntensity = 0;
+			DepthOfField.Enabled = false;
 
 			NeverLose.PlayAnimate(Part,TweenInfo.new(0.1),{
 				Size = Vector3.zero,
@@ -1708,20 +1758,47 @@ NeverLose.CreateBlurModule = LPH_NO_VIRTUALIZE(function(self , Frame , Signal)
 	end));
 
 	local THREAD = task.spawn(function()
-		while true do task.wait(0.1)
+		while not Closed do task.wait(0.1)
 			pcall(UpdateFunction);
 		end;
 	end);
 
 	disconnect = function()
-		rbxsignal:Disconnect();
-		loopThread:Disconnect();
-		task.cancel(THREAD);
-		Part:Destroy();
-		DepthOfField:Destroy();
+		if Closed then
+			return;
+		end;
+
+		Closed = true;
+
+		pcall(function()
+			rbxsignal:Disconnect();
+		end);
+		pcall(function()
+			loopThread:Disconnect();
+		end);
+		pcall(function()
+			task.cancel(THREAD);
+		end);
+
+		pcall(function()
+			DepthOfField.Enabled = false;
+			DepthOfField.NearIntensity = 0;
+		end);
+		pcall(function()
+			Part:Destroy();
+		end);
+		pcall(function()
+			DepthOfField:Destroy();
+		end);
 	end;
 
+	table.insert(NeverLose.BlurCleanups , disconnect);
+
 	Frame.Destroying:Connect(disconnect);
+
+	if NeverLose.ScreenGui then
+		NeverLose.ScreenGui.Destroying:Connect(disconnect);
+	end;
 
 	return rbxsignal;
 end);
@@ -5060,7 +5137,7 @@ function NeverLose:CreateWindow(Config)
 	HeadFrame.BackgroundTransparency = 1.000
 	HeadFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	HeadFrame.BorderSizePixel = 0
-	HeadFrame.Size = UDim2.new(1, 0, 0, 50)
+	HeadFrame.Size = UDim2.new(1, 0, 0, 62)
 	HeadFrame.ZIndex = 7
 
 	LogoImage.Name = NeverLose.RandomString();
@@ -5070,13 +5147,14 @@ function NeverLose:CreateWindow(Config)
 	LogoImage.BackgroundTransparency = 1.000
 	LogoImage.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	LogoImage.BorderSizePixel = 0
-	LogoImage.Position = UDim2.new(0, 27, 0.5, 0)
-	LogoImage.Size = UDim2.new(0, 38, 0, 38)
+	LogoImage.Position = UDim2.new(0, 34, 0.5, 0)
+	LogoImage.Size = UDim2.new(0, 50, 0, 50)
 	LogoImage.Rotation = 0
+	LogoImage.ScaleType = Enum.ScaleType.Fit
 	LogoImage.Image = Window.Logo
 	LogoImage.ImageColor3 = NeverLose.IconColor
 
-	UICorner_2.CornerRadius = UDim.new(0, 7)
+	UICorner_2.CornerRadius = UDim.new(0, 10)
 	UICorner_2.Parent = LogoImage
 
 		WindowName.Name = NeverLose.RandomString();
@@ -5085,15 +5163,16 @@ function NeverLose:CreateWindow(Config)
 	WindowName.BackgroundTransparency = 1.000
 	WindowName.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	WindowName.BorderSizePixel = 0
-	WindowName.Position = UDim2.new(0, 55, 0, 4)
-	WindowName.Size = UDim2.new(0, 200, 0, 25)
+	WindowName.Position = UDim2.new(0, 66, 0, 10)
+	WindowName.Size = UDim2.new(1, -74, 0, 24)
 	WindowName.ZIndex = 7
 		WindowName.Font = NeverLose.FontBold
 		ApplyTextFont(WindowName, NeverLose.FontBoldFace, NeverLose.FontBold)
 	WindowName.Text = Window.Name
 	WindowName.TextColor3 = Color3.fromRGB(255, 255, 255)
-	WindowName.TextSize = 15.000
+	WindowName.TextSize = 16.000
 	WindowName.TextXAlignment = Enum.TextXAlignment.Left
+	WindowName.TextTruncate = Enum.TextTruncate.AtEnd
 
 	WindowContent.Name = NeverLose.RandomString();
 	WindowContent.Parent = HeadFrame
@@ -5101,16 +5180,17 @@ function NeverLose:CreateWindow(Config)
 	WindowContent.BackgroundTransparency = 1.000
 	WindowContent.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	WindowContent.BorderSizePixel = 0
-	WindowContent.Position = UDim2.new(0, 55, 0, 25)
-	WindowContent.Size = UDim2.new(0, 200, 0, 15)
+	WindowContent.Position = UDim2.new(0, 66, 0, 34)
+	WindowContent.Size = UDim2.new(1, -74, 0, 16)
 	WindowContent.ZIndex = 7
 		WindowContent.Font = NeverLose.FontMedium
 		ApplyTextFont(WindowContent, NeverLose.FontMediumFace, NeverLose.FontMedium)
 	WindowContent.Text = Window.Content
 	WindowContent.TextColor3 = Color3.fromRGB(255, 255, 255)
-	WindowContent.TextSize = 14
+	WindowContent.TextSize = 13
 	WindowContent.TextTransparency = 0.650
 	WindowContent.TextXAlignment = Enum.TextXAlignment.Left
+	WindowContent.TextTruncate = Enum.TextTruncate.AtEnd
 
 	LineFrame.Name = NeverLose.RandomString();
 	LineFrame.Parent = HeadFrame
@@ -5131,8 +5211,8 @@ function NeverLose:CreateWindow(Config)
 	LeftScrollingFrame.BackgroundTransparency = 1.000
 	LeftScrollingFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	LeftScrollingFrame.BorderSizePixel = 0
-	LeftScrollingFrame.Position = UDim2.new(0.5, 0, 0, 60)
-	LeftScrollingFrame.Size = UDim2.new(1, -10, 1, -115)
+	LeftScrollingFrame.Position = UDim2.new(0.5, 0, 0, 70)
+	LeftScrollingFrame.Size = UDim2.new(1, -10, 1, -125)
 	LeftScrollingFrame.ZIndex = 7
 	LeftScrollingFrame.ScrollBarImageColor3 = NeverLose.AccentColor
 	LeftScrollingFrame.ScrollBarImageTransparency = 0.45
@@ -5979,41 +6059,67 @@ function NeverLose:CreateWindow(Config)
 
 		local Watermark_lb = {};
 		local Watermark = Instance.new("Frame")
-		local UICorner = Instance.new("UICorner")
 		local UIListLayout = Instance.new("UIListLayout")
-		local Shadow = NeverLose:CreateShadow(Watermark);
+		local BlockSize = 46;
+		local LogoSize = 28;
+		local BlockPadding = 8;
+
+		local function IsImageSource(Value)
+			if typeof(Value) ~= "string" or Value == "" then
+				return false;
+			end;
+
+			if string.find(Value , "rbxasset" , 1 , true) or string.find(Value , "http" , 1 , true) then
+				return true;
+			end;
+
+			if getcustomasset and isfile and isfile(Value) then
+				return true;
+			end;
+
+			return false;
+		end;
+
+		local function ResolveBlockLogo(IconStr)
+			if IsImageSource(IconStr) then
+				local LocalAsset = ResolveLocalIconAsset(IconStr);
+
+				return LocalAsset or IconStr , true;
+			end;
+
+			if IsImageSource(Window.Logo) then
+				return Window.Logo , true;
+			end;
+
+			if IsImageSource(NeverLose.GlobalLogo) then
+				return NeverLose.GlobalLogo , true;
+			end;
+
+			return IconStr , false;
+		end;
 
 		Watermark.Name = NeverLose.RandomString();
 		Watermark.Parent = NeverLose.ScreenGui
 		Watermark.AnchorPoint = Vector2.new(1, 0)
-		Watermark.BackgroundColor3 = Color3.fromRGB(8, 8, 13)
-		Watermark.BackgroundTransparency = 0.200
+		Watermark.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		Watermark.BackgroundTransparency = 1
 		Watermark.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		Watermark.BorderSizePixel = 0
-		Watermark.ClipsDescendants = true
-		Watermark.Position = UDim2.new(1, -10, 0, 10)
-		Watermark.Size = UDim2.new(0, 120, 0, 30)
+		Watermark.ClipsDescendants = false
+		Watermark.Position = UDim2.new(1, -12, 0, 12)
+		Watermark.Size = UDim2.new(0, BlockSize, 0, BlockSize)
 		Watermark.ZIndex = 16
-
-		UICorner.CornerRadius = UDim.new(0, 25)
-		UICorner.Parent = Watermark
 
 		UIListLayout.Parent = Watermark
 		UIListLayout.FillDirection = Enum.FillDirection.Horizontal
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-
-		local empty_space = Instance.new('Frame');
-
-		empty_space.Size = UDim2.fromOffset(15,0);
-		empty_space.BackgroundTransparency = 1;
-		empty_space.Parent = Watermark;
-		empty_space.LayoutOrder = 5;
+		UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		UIListLayout.Padding = UDim.new(0, BlockPadding)
 
 		Watermark:GetPropertyChangedSignal('BackgroundTransparency'):Connect(LPH_NO_VIRTUALIZE(function()
-			if Watermark.BackgroundTransparency > 0.9 then
-				Watermark.Visible = false;
-				Watermark.Parent = nil;
+			if Watermark.BackgroundTransparency > 0.9 and #Watermark:GetChildren() <= 1 then
+				Watermark.Visible = Watermark_lb.Status == true;
 			else
 				Watermark.Parent = NeverLose.ScreenGui
 				Watermark.Visible = true;
@@ -6021,109 +6127,109 @@ function NeverLose:CreateWindow(Config)
 		end));
 
 		UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(LPH_NO_VIRTUALIZE(function()
+			local ContentX = math.max(BlockSize , UIListLayout.AbsoluteContentSize.X);
+			local ContentY = math.max(BlockSize , UIListLayout.AbsoluteContentSize.Y);
+
 			NeverLose.PlayAnimate(Watermark , SlowyTween , {
-				Size = UDim2.new(0, UIListLayout.AbsoluteContentSize.X + 5, 0, 30)
+				Size = UDim2.new(0, ContentX, 0, ContentY)
 			})
 		end));
 
 		NeverLose.__WatermarkCache = Watermark_lb;
-
-		Shadow:Render(true);
 
 		Watermark_lb.Renders = {};
 		Watermark_lb.Status = true;
 
 		function Watermark_lb:SetRender(value)
 			Watermark_lb.Status = value;
+			Watermark.Visible = value == true;
 
 			if value then
-				NeverLose.PlayAnimate(Watermark,SlowyTween , {
-					BackgroundTransparency = 0.200
-				})
+				Watermark.Parent = NeverLose.ScreenGui;
+			end;
 
-				Shadow:Render(true);
-
-				for i,v in next , Watermark_lb.Renders do
-					pcall(v,true);
-				end;
-			else
-				NeverLose.PlayAnimate(Watermark,SlowyTween , {
-					BackgroundTransparency = 1
-				})
-
-				Shadow:Render(false);
-
-				for i,v in next , Watermark_lb.Renders do
-					pcall(v,false);
-				end;
-			end
+			for i,v in next , Watermark_lb.Renders do
+				pcall(v,value);
+			end;
 		end;
 
 		function Watermark_lb:AddBlock(IconStr , Name)
 			local InnerBlock = {};
-
+			local LogoSource , UseImageLogo = ResolveBlockLogo(IconStr);
 			local Frame = Instance.new("Frame")
-			local Content = Instance.new("TextLabel")
-			local Icon = Instance.new("TextLabel")
+			local UICorner = Instance.new("UICorner")
+			local LogoImage = Instance.new("ImageLabel")
+			local LogoIcon = Instance.new("TextLabel")
+			local Shadow = NeverLose:CreateShadow(Frame);
 
+			Frame.Name = NeverLose.RandomString();
 			Frame.Parent = Watermark
-			Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			Frame.BackgroundTransparency = 1.000
+			Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+			Frame.BackgroundTransparency = 0.5
 			Frame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			Frame.BorderSizePixel = 0
-			Frame.Size = UDim2.new(0, 50, 0, 30)
+			Frame.Size = UDim2.new(0, BlockSize, 0, BlockSize)
+			Frame.ZIndex = 17
+			Frame.ClipsDescendants = true
+			Frame.Active = true
 
-			Content.Name = NeverLose.RandomString();
-			Content.Parent = Frame
-			Content.AnchorPoint = Vector2.new(0, 0.5)
-			Content.BackgroundColor3 = Color3.fromRGB(186, 186, 186)
-			Content.BackgroundTransparency = 1.000
-			Content.BorderColor3 = Color3.fromRGB(0, 0, 0)
-			Content.BorderSizePixel = 0
-			Content.Position = UDim2.new(0, 31, 0.5, 0)
-			Content.Size = UDim2.new(0, 1, 0, 25)
-			Content.ZIndex = 17
-			Content.Font = NeverLose.FontBold
-			ApplyTextFont(Content, NeverLose.FontBoldFace, NeverLose.FontBold)
-			Content.Text = Name
-			Content.TextColor3 = Color3.fromRGB(186, 186, 186)
-			Content.TextSize = 15.000
-			Content.TextTransparency = 0.200
-			Content.TextXAlignment = Enum.TextXAlignment.Left
+			UICorner.CornerRadius = UDim.new(0, 12)
+			UICorner.Parent = Frame
 
-			Icon.Name = NeverLose.RandomString();
-			Icon.Parent = Frame
-			Icon.AnchorPoint = Vector2.new(0, 0.5)
-			Icon.BackgroundColor3 = Color3.fromRGB(186, 186, 186)
-			Icon.BackgroundTransparency = 1.000
-			Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
-			Icon.BorderSizePixel = 0
-			Icon.Position = UDim2.new(0, 11, 0.5, 0)
-			Icon.Size = UDim2.new(0, 16, 0, 16)
-			Icon.ZIndex = 17
-			Icon.TextColor3 = NeverLose.AccentColor
-			Icon.TextSize = 15.000
-			Icon.TextTransparency = 0.250
-			Icon.TextWrapped = true
-			NeverLose:SetIconMode(Icon , IconStr , true)
+			LogoImage.Name = NeverLose.RandomString();
+			LogoImage.Parent = Frame
+			LogoImage.AnchorPoint = Vector2.new(0.5, 0.5)
+			LogoImage.BackgroundTransparency = 1
+			LogoImage.BorderSizePixel = 0
+			LogoImage.Position = UDim2.fromScale(0.5, 0.5)
+			LogoImage.Size = UDim2.fromOffset(LogoSize, LogoSize)
+			LogoImage.ZIndex = 18
+			LogoImage.ScaleType = Enum.ScaleType.Fit
+			LogoImage.ImageTransparency = 0
+			LogoImage.ImageColor3 = Color3.new(1, 1, 1)
+			LogoImage.Visible = UseImageLogo == true
 
-			InnerBlock.Update = LPH_NO_VIRTUALIZE(function(value)
-				local size = GetTextObjectBounds(Content, Vector2.new(math.huge,math.huge))
+			if UseImageLogo then
+				LogoImage.Image = LogoSource or "";
+			end;
 
+			LogoIcon.Name = NeverLose.RandomString();
+			LogoIcon.Parent = Frame
+			LogoIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+			LogoIcon.BackgroundTransparency = 1
+			LogoIcon.BorderSizePixel = 0
+			LogoIcon.Position = UDim2.fromScale(0.5, 0.5)
+			LogoIcon.Size = UDim2.fromOffset(LogoSize, LogoSize)
+			LogoIcon.ZIndex = 18
+			LogoIcon.TextColor3 = Color3.new(1, 1, 1)
+			LogoIcon.TextSize = 18
+			LogoIcon.TextTransparency = 0
+			LogoIcon.TextWrapped = true
+			LogoIcon.Visible = UseImageLogo ~= true
+
+			if not UseImageLogo then
+				NeverLose:SetIconMode(LogoIcon , LogoSource or IconStr or "sprout" , true)
+			end;
+
+			InnerBlock.Visible = true;
+			InnerBlock.Name = Name;
+
+			InnerBlock.Update = LPH_NO_VIRTUALIZE(function()
 				if InnerBlock.Visible then
 					NeverLose.PlayAnimate(Frame,VSlowTween,{
-						Size = UDim2.new(0, size.X + 31, 0, 30)
+						Size = UDim2.new(0, BlockSize, 0, BlockSize),
+						BackgroundTransparency = 0.5
 					})
 				else
 					NeverLose.PlayAnimate(Frame,VSlowTween,{
-						Size = UDim2.new(0, 0, 0, 30)
+						Size = UDim2.new(0, 0, 0, BlockSize),
+						BackgroundTransparency = 1
 					})
 				end;
 			end);
 
-			InnerBlock.Visible = true;
-
 			InnerBlock.Update();
+			Shadow:Render(true);
 
 			function InnerBlock:SetVisible(v)
 				InnerBlock.Visible = v;
@@ -6136,32 +6242,71 @@ function NeverLose:CreateWindow(Config)
 			end;
 
 			InnerBlock.SetRender = LPH_NO_VIRTUALIZE(function(value)
-				if value and InnerBlock.Visible then
-					NeverLose.PlayAnimate(Content,SlowyTween , {
-						TextTransparency = 0.200
+				local Show = value and InnerBlock.Visible;
+
+				if Show then
+					Frame.Visible = true;
+					Shadow:Render(true);
+
+					NeverLose.PlayAnimate(Frame,SlowyTween , {
+						BackgroundTransparency = 0.5
 					})
 
-					NeverLose.PlayAnimate(Icon,SlowyTween , {
-						TextTransparency = 0.250
-					})
+					if UseImageLogo then
+						NeverLose.PlayAnimate(LogoImage,SlowyTween , {
+							ImageTransparency = 0
+						})
+					else
+						NeverLose.PlayAnimate(LogoIcon,SlowyTween , {
+							TextTransparency = 0
+						})
+					end;
 				else
+					Shadow:Render(false);
 
-					NeverLose.PlayAnimate(Content,SlowyTween , {
-						TextTransparency = 1
+					NeverLose.PlayAnimate(Frame,SlowyTween , {
+						BackgroundTransparency = 1
 					})
 
-					NeverLose.PlayAnimate(Icon,SlowyTween , {
-						TextTransparency = 1
-					})
+					if UseImageLogo then
+						NeverLose.PlayAnimate(LogoImage,SlowyTween , {
+							ImageTransparency = 1
+						})
+					else
+						NeverLose.PlayAnimate(LogoIcon,SlowyTween , {
+							TextTransparency = 1
+						})
+					end;
 				end;
 			end);
 
 			table.insert(Watermark_lb.Renders,InnerBlock.SetRender);
 
 			function InnerBlock:SetText(t)
-				Content.Text = t;
+				InnerBlock.Name = t;
+			end;
 
-				InnerBlock.Update();
+			function InnerBlock:SetLogo(Logo)
+				local NextSource , NextUseImage = ResolveBlockLogo(Logo);
+
+				UseImageLogo = NextUseImage;
+				LogoSource = NextSource;
+				LogoImage.Visible = UseImageLogo == true;
+				LogoIcon.Visible = UseImageLogo ~= true;
+
+				if UseImageLogo then
+					LogoImage.Image = LogoSource or "";
+					LogoImage.ImageTransparency = 0;
+				else
+					NeverLose:SetIconMode(LogoIcon , LogoSource or Logo or "sprout" , true)
+					LogoIcon.TextTransparency = 0;
+				end;
+			end;
+
+			function InnerBlock:SetColor(Color)
+				if typeof(Color) == "Color3" then
+					Frame.BackgroundColor3 = Color;
+				end;
 			end;
 
 			function InnerBlock:Input(func)
@@ -6737,11 +6882,15 @@ function NeverLose:CreateIndicator()
 end;
 
 function NeverLose:Unload()
+	NeverLose.CleanupBlurArtifacts();
+
 	if not NeverLose.UnloadEnabled then
 		return;	
 	end;
 
-	NeverLose.ScreenGui:Destroy();
+	pcall(function()
+		NeverLose.ScreenGui:Destroy();
+	end);
 
 	for i,v in next , NeverLose.GlobalSignals do
 		pcall(v.Disconnect,v)
