@@ -252,11 +252,12 @@ local function GetDropdownOptionData(Value)
 
 	local RawText = tostring(Text or "")
 	local DisplayText, HasLeadingEmoji = StripDropdownEmoji(RawText)
+	local BaseDisplayText = string.match(DisplayText, "^(.-)%s+%[Recipe%d+%]$") or DisplayText
 	local MappedImage = Image
 	local ImageMap = NeverLose.DropdownImageMap
 
 	if MappedImage == nil and type(ImageMap) == "table" then
-		MappedImage = ImageMap[Key] or ImageMap[RawText] or ImageMap[DisplayText]
+		MappedImage = ImageMap[Key] or ImageMap[RawText] or ImageMap[DisplayText] or ImageMap[BaseDisplayText]
 	end
 
 	return DisplayText, MappedImage, MappedImage ~= nil or HasLeadingEmoji, Key
@@ -672,13 +673,13 @@ NeverLose.Scales = {
 NeverLose.IconColor = Color3.fromRGB(255, 255, 255);
 NeverLose.ScreenGui = GlobalWindow;
 NeverLose.Flags = {};
-NeverLose.AccentColor = Color3.fromRGB(255, 0, 0);
+NeverLose.AccentColor = Color3.fromRGB(27, 112, 196);
 NeverLose.MainColor = Color3.fromRGB(8, 8, 13);
 NeverLose.RegisiteryColor = {};
 NeverLose.NameRegisitry = {};
 NeverLose.IsMosueOverOtherFrame = false;
-NeverLose.GlobalLogo = "rbxassetid://120358385035996";
-NeverLose.ImageColorMapping = "rbxassetid://4155801252";
+NeverLose.GlobalLogo = "rbxassetid://108790254773942";
+NeverLose.ImageColorMapping = "rbxassetid://108790254773942";
 
 if getcustomasset then
 	local link = "https://github.com/4lpaca-pin/NeverLose/blob/main/assets/%s?raw=true";
