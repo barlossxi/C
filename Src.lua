@@ -6060,9 +6060,10 @@ function NeverLose:CreateWindow(Config)
 		local Watermark_lb = {};
 		local Watermark = Instance.new("Frame")
 		local UIListLayout = Instance.new("UIListLayout")
-		local BlockSize = 46;
-		local LogoSize = 28;
-		local BlockPadding = 8;
+		local BlockSize = 72;
+		local LogoSize = 48;
+		local BlockPadding = 10;
+		local CornerRadius = 16;
 
 		local function IsImageSource(Value)
 			if typeof(Value) ~= "string" or Value == "" then
@@ -6100,20 +6101,20 @@ function NeverLose:CreateWindow(Config)
 
 		Watermark.Name = NeverLose.RandomString();
 		Watermark.Parent = NeverLose.ScreenGui
-		Watermark.AnchorPoint = Vector2.new(1, 0)
+		Watermark.AnchorPoint = Vector2.new(0.5, 0)
 		Watermark.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 		Watermark.BackgroundTransparency = 1
 		Watermark.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		Watermark.BorderSizePixel = 0
 		Watermark.ClipsDescendants = false
-		Watermark.Position = UDim2.new(1, -12, 0, 12)
+		Watermark.Position = UDim2.new(0.5, 0, 0, 14)
 		Watermark.Size = UDim2.new(0, BlockSize, 0, BlockSize)
 		Watermark.ZIndex = 16
 
 		UIListLayout.Parent = Watermark
 		UIListLayout.FillDirection = Enum.FillDirection.Horizontal
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 		UIListLayout.Padding = UDim.new(0, BlockPadding)
 
@@ -6173,7 +6174,7 @@ function NeverLose:CreateWindow(Config)
 			Frame.ClipsDescendants = true
 			Frame.Active = true
 
-			UICorner.CornerRadius = UDim.new(0, 12)
+			UICorner.CornerRadius = UDim.new(0, CornerRadius)
 			UICorner.Parent = Frame
 
 			LogoImage.Name = NeverLose.RandomString();
@@ -6202,7 +6203,7 @@ function NeverLose:CreateWindow(Config)
 			LogoIcon.Size = UDim2.fromOffset(LogoSize, LogoSize)
 			LogoIcon.ZIndex = 18
 			LogoIcon.TextColor3 = Color3.new(1, 1, 1)
-			LogoIcon.TextSize = 18
+			LogoIcon.TextSize = 28
 			LogoIcon.TextTransparency = 0
 			LogoIcon.TextWrapped = true
 			LogoIcon.Visible = UseImageLogo ~= true
