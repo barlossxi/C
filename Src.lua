@@ -145,14 +145,13 @@ local NeverLose = {};
 
 NeverLose.BuiltInRegular = Font.new('rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json',Enum.FontWeight.Regular,Enum.FontStyle.Normal);
 NeverLose.BuiltInBold = Font.new('rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json',Enum.FontWeight.Bold,Enum.FontStyle.Normal);
-NeverLose.IconModuleUrl = "https://raw.githubusercontent.com/Misharuz/lucide-roblox-reborn/refs/heads/main/lib.lua";
+NeverLose.IconModuleUrl = "https://raw.githubusercontent.com/deividcomsono/lucide-roblox-direct/refs/heads/main/source.lua";
 NeverLose.LucideAliases = {
 	["chevron-large-right"] = "chevron-right",
 	["chevron-small-down"] = "chevron-down",
 	["crosshairs"] = "crosshair",
 	["gear"] = "settings",
 	["magnifying-glass"] = "search",
-	["sprout"] = "leaf",
 	["three-dots-horizontal"] = "ellipsis",
 };
 NeverLose.DropdownImageMap = {};
@@ -253,12 +252,11 @@ local function GetDropdownOptionData(Value)
 
 	local RawText = tostring(Text or "")
 	local DisplayText, HasLeadingEmoji = StripDropdownEmoji(RawText)
-	local BaseDisplayText = string.match(DisplayText, "^(.-)%s+%[Recipe%d+%]$") or DisplayText
 	local MappedImage = Image
 	local ImageMap = NeverLose.DropdownImageMap
 
 	if MappedImage == nil and type(ImageMap) == "table" then
-		MappedImage = ImageMap[Key] or ImageMap[RawText] or ImageMap[DisplayText] or ImageMap[BaseDisplayText]
+		MappedImage = ImageMap[Key] or ImageMap[RawText] or ImageMap[DisplayText]
 	end
 
 	return DisplayText, MappedImage, MappedImage ~= nil or HasLeadingEmoji, Key
@@ -345,8 +343,7 @@ local function EnsureImageIcon(TextObject)
 end
 
 function NeverLose:SetIconModule(Module)
-	if typeof(Module) == "table"
-		and (typeof(Module.GetAsset) == "function" or typeof(Module.GetIcon) == "function") then
+	if typeof(Module) == "table" and typeof(Module.GetAsset) == "function" then
 		self.IconModule = Module;
 		self.IconModuleAttempted = true;
 	end;
@@ -373,8 +370,7 @@ function NeverLose:EnsureIconModule()
 		return Loader(game:HttpGet(self.IconModuleUrl))();
 	end);
 
-	if Success and typeof(Module) == "table"
-		and (typeof(Module.GetAsset) == "function" or typeof(Module.GetIcon) == "function") then
+	if Success and typeof(Module) == "table" and typeof(Module.GetAsset) == "function" then
 		self.IconModule = Module;
 	end;
 
@@ -397,22 +393,11 @@ function NeverLose:GetLucideIcon(Icon)
 	end;
 
 	for _ , Name in ipairs(Candidates) do
-		local Success, IconData = pcall(function()
-			if typeof(Module.GetAsset) == "function" then
-				return Module.GetAsset(Name)
-			end
+		local Success , IconData = pcall(Module.GetAsset , Name);
 
-			return Module.GetIcon(Name)
-		end)
-
-		if Success and IconData and IconData.Url then
-			return {
-				Url = IconData.Url,
-				ImageRectOffset = IconData.ImageRectOffset or ZeroVector2,
-				ImageRectSize = IconData.ImageRectSize or ZeroVector2,
-				Custom = IconData.Custom == true
-			};
-		end
+		if Success and IconData then
+			return IconData;
+		end;
 	end;
 
 	return nil;
@@ -687,12 +672,12 @@ NeverLose.Scales = {
 NeverLose.IconColor = Color3.fromRGB(255, 255, 255);
 NeverLose.ScreenGui = GlobalWindow;
 NeverLose.Flags = {};
-NeverLose.AccentColor = Color3.fromRGB(27, 112, 196);
+NeverLose.AccentColor = Color3.fromRGB(255, 0, 0);
 NeverLose.MainColor = Color3.fromRGB(8, 8, 13);
 NeverLose.RegisiteryColor = {};
 NeverLose.NameRegisitry = {};
 NeverLose.IsMosueOverOtherFrame = false;
-NeverLose.GlobalLogo = "rbxassetid://108790254773942";
+NeverLose.GlobalLogo = "rbxassetid://120358385035996";
 NeverLose.ImageColorMapping = "rbxassetid://4155801252";
 
 if getcustomasset then
@@ -4952,8 +4937,7 @@ function NeverLose:CreateWindow(Config)
 	LogoImage.Position = UDim2.new(0, 27, 0.5, 0)
 	LogoImage.Size = UDim2.new(0, 35, 0, 35)
 	LogoImage.ZIndex = 7
-	local LogoIconData = NeverLose:GetCustomIcon(Window.Logo)
-	LogoImage.Image = LogoIconData and LogoIconData.Url or ""
+	LogoImage.Image = Window.Logo
 	LogoImage.ImageColor3 = NeverLose.IconColor
 
 	UICorner_2.CornerRadius = UDim.new(0, 7)
