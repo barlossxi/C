@@ -145,13 +145,14 @@ local NeverLose = {};
 
 NeverLose.BuiltInRegular = Font.new('rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json',Enum.FontWeight.Regular,Enum.FontStyle.Normal);
 NeverLose.BuiltInBold = Font.new('rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json',Enum.FontWeight.Bold,Enum.FontStyle.Normal);
-NeverLose.IconModuleUrl = "https://raw.githubusercontent.com/deividcomsono/lucide-roblox-direct/refs/heads/main/source.lua";
+NeverLose.IconModuleUrl = "https://raw.githubusercontent.com/Misharuz/lucide-roblox-reborn/refs/heads/main/lib.lua";
 NeverLose.LucideAliases = {
 	["chevron-large-right"] = "chevron-right",
 	["chevron-small-down"] = "chevron-down",
 	["crosshairs"] = "crosshair",
 	["gear"] = "settings",
 	["magnifying-glass"] = "search",
+	["sprout"] = "leaf",
 	["three-dots-horizontal"] = "ellipsis",
 };
 NeverLose.DropdownImageMap = {};
@@ -344,7 +345,8 @@ local function EnsureImageIcon(TextObject)
 end
 
 function NeverLose:SetIconModule(Module)
-	if typeof(Module) == "table" and typeof(Module.GetAsset) == "function" then
+	if typeof(Module) == "table"
+		and (typeof(Module.GetAsset) == "function" or typeof(Module.GetIcon) == "function") then
 		self.IconModule = Module;
 		self.IconModuleAttempted = true;
 	end;
@@ -371,7 +373,8 @@ function NeverLose:EnsureIconModule()
 		return Loader(game:HttpGet(self.IconModuleUrl))();
 	end);
 
-	if Success and typeof(Module) == "table" and typeof(Module.GetAsset) == "function" then
+	if Success and typeof(Module) == "table"
+		and (typeof(Module.GetAsset) == "function" or typeof(Module.GetIcon) == "function") then
 		self.IconModule = Module;
 	end;
 
@@ -394,11 +397,22 @@ function NeverLose:GetLucideIcon(Icon)
 	end;
 
 	for _ , Name in ipairs(Candidates) do
-		local Success , IconData = pcall(Module.GetAsset , Name);
+		local Success, IconData = pcall(function()
+			if typeof(Module.GetAsset) == "function" then
+				return Module.GetAsset(Name)
+			end
 
-		if Success and IconData then
-			return IconData;
-		end;
+			return Module.GetIcon(Name)
+		end)
+
+		if Success and IconData and IconData.Url then
+			return {
+				Url = IconData.Url,
+				ImageRectOffset = IconData.ImageRectOffset or ZeroVector2,
+				ImageRectSize = IconData.ImageRectSize or ZeroVector2,
+				Custom = IconData.Custom == true
+			};
+		end
 	end;
 
 	return nil;
@@ -679,7 +693,7 @@ NeverLose.RegisiteryColor = {};
 NeverLose.NameRegisitry = {};
 NeverLose.IsMosueOverOtherFrame = false;
 NeverLose.GlobalLogo = "rbxassetid://108790254773942";
-NeverLose.ImageColorMapping = "rbxassetid://108790254773942";
+NeverLose.ImageColorMapping = "rbxassetid://4155801252";
 
 if getcustomasset then
 	local link = "https://github.com/4lpaca-pin/NeverLose/blob/main/assets/%s?raw=true";
@@ -4938,7 +4952,8 @@ function NeverLose:CreateWindow(Config)
 	LogoImage.Position = UDim2.new(0, 27, 0.5, 0)
 	LogoImage.Size = UDim2.new(0, 35, 0, 35)
 	LogoImage.ZIndex = 7
-	LogoImage.Image = Window.Logo
+	local LogoIconData = NeverLose:GetCustomIcon(Window.Logo)
+	LogoImage.Image = LogoIconData and LogoIconData.Url or ""
 	LogoImage.ImageColor3 = NeverLose.IconColor
 
 	UICorner_2.CornerRadius = UDim.new(0, 7)
