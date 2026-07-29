@@ -1622,6 +1622,9 @@ NeverLose.CleanupBlurArtifacts = LPH_NO_VIRTUALIZE(function()
 	for _ , Child in next , LightingService:GetChildren() do
 		if Child.Name == "SmoothX" and (Child:IsA("DepthOfFieldEffect") or Child:IsA("BlurEffect")) then
 			pcall(function()
+				Child.Enabled = false;
+			end);
+			pcall(function()
 				Child:Destroy();
 			end);
 		end;
@@ -1631,6 +1634,16 @@ NeverLose.CleanupBlurArtifacts = LPH_NO_VIRTUALIZE(function()
 
 	if Camera then
 		for _ , Child in next , Camera:GetChildren() do
+			if Child.Name == "SmoothX" then
+				pcall(function()
+					Child:Destroy();
+				end);
+			end;
+		end;
+	end;
+
+	if workspace then
+		for _ , Child in next , workspace:GetChildren() do
 			if Child.Name == "SmoothX" and Child:IsA("BasePart") then
 				pcall(function()
 					Child:Destroy();
@@ -1661,10 +1674,16 @@ NeverLose.CreateBlurModule = LPH_NO_VIRTUALIZE(function(self , Frame , Signal)
 
 	NeverLose.CleanupBlurArtifacts();
 
-	local Part = Instance.new('Part',NeverLose.BlurModuleParent);
-	local DepthOfField = Instance.new('DepthOfFieldEffect',cloneref(game:GetService('Lighting')));
+	local Part = Instance.new('Part');
+	local DepthOfField = Instance.new('DepthOfFieldEffect');
 	local BlockMesh = Instance.new("BlockMesh");
 	local Closed = false;
+	local BlurActive = false;
+	local rbxsignal;
+	local loopThread;
+	local signalThread;
+	local THREAD;
+	local disconnect;
 
 	BlockMesh.Parent = Part;
 
@@ -1678,53 +1697,127 @@ NeverLose.CreateBlurModule = LPH_NO_VIRTUALIZE(function(self , Frame , Signal)
 	Part.CollisionGroup = "SmoothX";
 	Part.Size = Vector3.new(1, 1, 1) * 0.01;
 	Part.Color = Color3.fromRGB(0,0,0);
+	Part.Name = "SmoothX";
+	Part.Parent = nil;
 
-	DepthOfField.Enabled = true;
+	DepthOfField.Enabled = false;
 	DepthOfField.FarIntensity = 0;
 	DepthOfField.FocusDistance = 0;
 	DepthOfField.InFocusRadius = 1000;
-	DepthOfField.NearIntensity = 1;
+	DepthOfField.NearIntensity = 0;
 	DepthOfField.Name = "SmoothX";
+	DepthOfField.Parent = cloneref(game:GetService('Lighting'));
 
-	Part.Name = "SmoothX";
+	local function IsAlive(Object)
+		if typeof(Object) ~= "Instance" then
+			return false;
+		end;
 
-	local disconnect;
+		local Success = pcall(function()
+			Object.Parent = Object.Parent;
+		end);
+
+		return Success;
+	end;
+
+	local function IsFrameReady()
+		if not Frame or not Frame.Parent then
+			return false;
+		end;
+
+		if Frame.Visible == false then
+			return false;
+		end;
+
+		if Frame.BackgroundTransparency > 0.9 then
+			return false;
+		end;
+
+		local Size = Frame.AbsoluteSize;
+
+		if Size.X < 40 or Size.Y < 40 then
+			return false;
+		end;
+
+		return true;
+	end;
+
+	local function SafeSetPartParent(Parent)
+		if Closed or not IsAlive(Part) then
+			return false;
+		end;
+
+		local Success = pcall(function()
+			Part.Parent = Parent;
+		end);
+
+		if not Success then
+			Closed = true;
+			return false;
+		end;
+
+		return true;
+	end;
+
+	local function SetBlurOff()
+		BlurActive = false;
+
+		pcall(function()
+			if IsAlive(DepthOfField) then
+				DepthOfField.NearIntensity = 0;
+				DepthOfField.Enabled = false;
+			end;
+		end);
+
+		pcall(function()
+			if IsAlive(Part) then
+				Part.Transparency = 1;
+				Part.Size = Vector3.zero;
+			end;
+		end);
+
+		SafeSetPartParent(nil);
+	end;
 
 	local UpdateFunction = function()
 		if Closed then
 			return false;
 		end;
 
-		local IsWindowActive = Signal:GetValue();
-
-		if IsWindowActive and not NeverLose.Global3DRenderMode then
-			DepthOfField.Enabled = true;
-
-			NeverLose.PlayAnimate(DepthOfField,TweenInfo.new(0.1),{
-				NearIntensity = 1
-			})
-
-			NeverLose.PlayAnimate(Part,TweenInfo.new(0.1),{
-				Transparency = 0.97,
-				Size = Vector3.new(1, 1, 1) * 0.01;
-			})
-
-			Part.Parent = NeverLose.BlurModuleParent;
-		else
-			DepthOfField.NearIntensity = 0;
-			DepthOfField.Enabled = false;
-
-			NeverLose.PlayAnimate(Part,TweenInfo.new(0.1),{
-				Size = Vector3.zero,
-				Transparency = 1.5,
-			})
-
-			Part.Parent = nil;
-
+		if not IsAlive(Part) or not IsAlive(DepthOfField) then
+			Closed = true;
 			return false;
 		end;
 
+		local IsWindowActive = Signal:GetValue() == true and not NeverLose.Global3DRenderMode and IsFrameReady();
+		local TargetParent = NeverLose.BlurModuleParent or workspace.CurrentCamera;
+
 		if IsWindowActive then
+			if not BlurActive then
+				BlurActive = true;
+				pcall(function()
+					DepthOfField.Enabled = true;
+					DepthOfField.NearIntensity = 0;
+				end);
+			end;
+
+			if not SafeSetPartParent(TargetParent) then
+				return false;
+			end;
+
+			pcall(function()
+				NeverLose.PlayAnimate(DepthOfField,TweenInfo.new(0.1),{
+					NearIntensity = 1
+				})
+			end);
+
+			pcall(function()
+				NeverLose.PlayAnimate(Part,TweenInfo.new(0.1),{
+					Transparency = 0.97,
+					Size = Vector3.new(1, 1, 1) * 0.01;
+				})
+			end);
+
 			local corner0 = Frame.AbsolutePosition;
 			local corner1 = corner0 + Frame.AbsoluteSize;
 
@@ -1732,7 +1825,6 @@ NeverLose.CreateBlurModule = LPH_NO_VIRTUALIZE(function(self , Frame , Signal)
 			local ray1 = CurrentCamera.ScreenPointToRay(CurrentCamera,corner1.X, corner1.Y, 1);
 
 			local planeOrigin = CurrentCamera.CFrame.Position + CurrentCamera.CFrame.LookVector * (0.05 - CurrentCamera.NearPlaneZ);
-
 			local planeNormal = CurrentCamera.CFrame.LookVector;
 
 			local pos0 = NeverLose.GetCalculatePosition(planeOrigin, planeNormal, ray0.Origin, ray0.Direction);
@@ -1744,21 +1836,35 @@ NeverLose.CreateBlurModule = LPH_NO_VIRTUALIZE(function(self , Frame , Signal)
 			local size   = pos1 - pos0;
 			local center = (pos0 + pos1) / 2;
 
-			BlockMesh.Offset = center
-			BlockMesh.Scale  = size / 0.0101;
-			Part.CFrame = CurrentCamera.CFrame;
+			pcall(function()
+				BlockMesh.Offset = center
+				BlockMesh.Scale  = size / 0.0101;
+				Part.CFrame = CurrentCamera.CFrame;
+			end);
+		else
+			SetBlurOff();
+			return false;
 		end;
 	end;
 
-	local rbxsignal = NeverLose:AddSignal(CurrentCamera:GetPropertyChangedSignal('CFrame'):Connect(UpdateFunction))
-	local loopThread = NeverLose:AddSignal(UserInputService.InputChanged:Connect(function(Input)
+	rbxsignal = NeverLose:AddSignal(CurrentCamera:GetPropertyChangedSignal('CFrame'):Connect(function()
+		pcall(UpdateFunction);
+	end))
+	loopThread = NeverLose:AddSignal(UserInputService.InputChanged:Connect(function(Input)
 		if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
 			pcall(UpdateFunction);
 		end;
 	end));
+	signalThread = NeverLose:AddSignal(Signal:Connect(function()
+		pcall(UpdateFunction);
+	end));
 
-	local THREAD = task.spawn(function()
-		while not Closed do task.wait(0.1)
+	THREAD = task.spawn(function()
+		while not Closed do
+			task.wait(0.1);
+			if Closed then
+				break;
+			end;
 			pcall(UpdateFunction);
 		end;
 	end);
@@ -1769,36 +1875,72 @@ NeverLose.CreateBlurModule = LPH_NO_VIRTUALIZE(function(self , Frame , Signal)
 		end;
 
 		Closed = true;
+		BlurActive = false;
 
 		pcall(function()
-			rbxsignal:Disconnect();
+			if rbxsignal then
+				rbxsignal:Disconnect();
+			end;
 		end);
 		pcall(function()
-			loopThread:Disconnect();
+			if loopThread then
+				loopThread:Disconnect();
+			end;
 		end);
 		pcall(function()
-			task.cancel(THREAD);
+			if signalThread then
+				signalThread:Disconnect();
+			end;
+		end);
+		pcall(function()
+			if THREAD then
+				task.cancel(THREAD);
+			end;
 		end);
 
 		pcall(function()
-			DepthOfField.Enabled = false;
-			DepthOfField.NearIntensity = 0;
+			if IsAlive(DepthOfField) then
+				DepthOfField.NearIntensity = 0;
+				DepthOfField.Enabled = false;
+			end;
 		end);
 		pcall(function()
-			Part:Destroy();
+			if IsAlive(Part) then
+				Part.Parent = nil;
+			end;
 		end);
 		pcall(function()
-			DepthOfField:Destroy();
+			if IsAlive(Part) then
+				Part:Destroy();
+			end;
+		end);
+		pcall(function()
+			if IsAlive(DepthOfField) then
+				DepthOfField:Destroy();
+			end;
 		end);
 	end;
 
 	table.insert(NeverLose.BlurCleanups , disconnect);
+
+	Part.Destroying:Connect(function()
+		Closed = true;
+		BlurActive = false;
+	end);
+
+	DepthOfField.Destroying:Connect(function()
+		Closed = true;
+		BlurActive = false;
+	end);
 
 	Frame.Destroying:Connect(disconnect);
 
 	if NeverLose.ScreenGui then
 		NeverLose.ScreenGui.Destroying:Connect(disconnect);
 	end;
+
+	SetBlurOff();
+	pcall(UpdateFunction);
 
 	return rbxsignal;
 end);
@@ -4852,7 +4994,7 @@ function NeverLose:CreateWindow(Config)
 		Name = Config.Name,
 		Content = Config.Content,
 		Size = Config.Size,
-		Signal = NeverLose:CreateSignal(true),
+		Signal = NeverLose:CreateSignal(false),
 		Tabs = {},
 		CurrentTab = 1,
 		Keybind = Config.Keybind,
@@ -4896,13 +5038,14 @@ function NeverLose:CreateWindow(Config)
 	WindowFrame.Parent = NeverLose.ScreenGui;
 	WindowFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	WindowFrame.BackgroundColor3 = NeverLose.MainColor
-	WindowFrame.BackgroundTransparency = 0.055
+	WindowFrame.BackgroundTransparency = 1
 	WindowFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	WindowFrame.BorderSizePixel = 0
 	WindowFrame.ClipsDescendants = true
 	WindowFrame.Position = UDim2.new(255, 0, 255, 0)
 	WindowFrame.Size = Window.Size
 	WindowFrame.Active = true;
+	WindowFrame.Visible = false;
 
 	if not NeverLose.EnabledBlur then
 		WindowFrame.BackgroundTransparency = 0.0255
@@ -5091,17 +5234,13 @@ function NeverLose:CreateWindow(Config)
 	Window.Shadow = NeverLose:CreateShadow(WindowFrame);
 	Window.Shadow:Render(false);
 
-	task.delay(0.25,function()
-		WindowFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-		Window:SetRender(true);
-		NeverLose:AddSignal(Window.Signal:Connect(LPH_NO_VIRTUALIZE(function(...)
-			Window:SetRender(...);
-		end)))
-	end)
-
 	if NeverLose.EnabledBlur then
 		NeverLose:CreateBlurModule(WindowFrame,Window.Signal);
 	end;
+
+	NeverLose:AddSignal(Window.Signal:Connect(LPH_NO_VIRTUALIZE(function(...)
+		Window:SetRender(...);
+	end)))
 
 	do
 		local Frame = Instance.new("Frame")
@@ -6052,6 +6191,30 @@ function NeverLose:CreateWindow(Config)
 		end;
 	end;
 
+	function Window:Destroy()
+		pcall(function()
+			Window.Signal:SetValue(false);
+		end);
+		pcall(function()
+			NeverLose.CleanupBlurArtifacts();
+		end);
+		pcall(function()
+			if NeverLose.ScreenGui then
+				NeverLose.ScreenGui:Destroy();
+			end;
+		end);
+		NeverLose.__WatermarkCache = nil;
+		NeverLose.__Notification_Cache = nil;
+	end;
+
+	function Window:Unload()
+		Window:Destroy();
+	end;
+
+	function Window:Close()
+		Window:Destroy();
+	end;
+
 	function Window:Watermark()
 		if NeverLose.__WatermarkCache then
 			return NeverLose.__WatermarkCache;
@@ -6397,6 +6560,16 @@ function NeverLose:CreateWindow(Config)
 	end;
 
 	Window:SetRender(false);
+	Window.Signal:SetValue(false);
+
+	task.delay(0.25,function()
+		if not WindowFrame or not WindowFrame.Parent then
+			return;
+		end;
+
+		WindowFrame.Position = UDim2.new(0.5, 0, 0.5, 0);
+		Window.Signal:SetValue(true);
+	end);
 
 	return Window;
 end;
@@ -6959,17 +7132,22 @@ end;
 function NeverLose:Unload()
 	NeverLose.CleanupBlurArtifacts();
 
-	if not NeverLose.UnloadEnabled then
-		return;	
-	end;
-
 	pcall(function()
-		NeverLose.ScreenGui:Destroy();
+		if NeverLose.ScreenGui then
+			NeverLose.ScreenGui:Destroy();
+		end;
 	end);
+
+	NeverLose.__WatermarkCache = nil;
+	NeverLose.__Notification_Cache = nil;
 
 	for i,v in next , NeverLose.GlobalSignals do
 		pcall(v.Disconnect,v)
 	end;
+end;
+
+if type(getgenv) == "function" then
+	getgenv().NeverLose = NeverLose;
 end;
 
 return NeverLose; 
