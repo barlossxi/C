@@ -5070,8 +5070,9 @@ function NeverLose:CreateWindow(Config)
 	LogoImage.BackgroundTransparency = 1.000
 	LogoImage.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	LogoImage.BorderSizePixel = 0
-	LogoImage.Size = UDim2.new(0, 42, 0, 42)
-	LogoImage.ZIndex = 7
+	LogoImage.Position = UDim2.new(0, 27, 0.5, 0)
+	LogoImage.Size = UDim2.new(0, 38, 0, 38)
+	LogoImage.Rotation = 0
 	LogoImage.Image = Window.Logo
 	LogoImage.ImageColor3 = NeverLose.IconColor
 
