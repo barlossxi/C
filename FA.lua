@@ -143,7 +143,7 @@ local Library do
         ["Equals"]            = "=",
         ["At"]                = "@",
         ["LeftBracket"]       = "LeftBracket",
-        ["RightBracket"]      = "RightBracked",
+        ["RightBracket"]      = "RightBracket",
         ["BackSlash"]         = "BackSlash",
         ["Caret"]             = "^",
         ["Underscore"]        = "_",
