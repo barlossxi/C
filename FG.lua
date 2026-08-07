@@ -3369,7 +3369,6 @@ end
             Items["Holder"] = Instances:Create("ScrollingFrame", {
                 Parent = Items["OptionHolder"].Instance,
                 Active = true,
-                AutomaticCanvasSize = Enum.AutomaticSize.Y,
                 ZIndex = 25,
                 BorderSizePixel = 0,
                 CanvasSize = UDim2New(0, 0, 0, 0),
@@ -3386,11 +3385,15 @@ end
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  Items["Holder"]:AddToTheme({ScrollBarImageColor3 = "Accent"})
 
-            Instances:Create("UIListLayout", {
+            local DropdownList = Instances:Create("UIListLayout", {
                 Parent = Items["Holder"].Instance,
                 Padding = UDimNew(0, 3),
                 SortOrder = Enum.SortOrder.LayoutOrder
-            }) 
+            })
+
+            DropdownList:Connect("Changed", function()
+                Items["Holder"].Instance.CanvasSize = UDim2New(0, 0, 0, DropdownList.Instance.AbsoluteContentSize.Y)
+            end) 
 
             Items["RealDropdown"] = Instances:Create("TextButton", {
                 Parent = Items["Dropdown"].Instance,
@@ -4140,4 +4143,5 @@ end
 end
 
 getgenv().Library = Library
+
 return Library
