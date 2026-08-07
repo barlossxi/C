@@ -2089,7 +2089,7 @@ end
 
             Library:Connect(RightLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
                 task.defer(function()
-                    Items["Right"].Instance.CanvasSize = UDim2New(0, 0, 0, RightLayout.Instance.AbsoluteContentSize.Y + 50)
+                    Items["Right"].Instance.CanvasSize = UDim2New(0, 0, 0, RightLayout.Instance.AbsoluteContentSize.Y + 400)
                 end)
             end)
 
@@ -2128,7 +2128,7 @@ end
 
             Library:Connect(LeftLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
                 task.defer(function()
-                    Items["Left"].Instance.CanvasSize = UDim2New(0, 0, 0, LeftLayout.Instance.AbsoluteContentSize.Y + 50)
+                    Items["Left"].Instance.CanvasSize = UDim2New(0, 0, 0, LeftLayout.Instance.AbsoluteContentSize.Y + 400)
                 end)
             end)
         end
@@ -2255,7 +2255,7 @@ end
 
                 Library:Connect(ColLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
                     task.defer(function()
-                        Column.Instance.CanvasSize = UDim2New(0, 0, 0, ColLayout.Instance.AbsoluteContentSize.Y + 50)
+                        Column.Instance.CanvasSize = UDim2New(0, 0, 0, ColLayout.Instance.AbsoluteContentSize.Y + 400)
                     end)
                 end)
 
