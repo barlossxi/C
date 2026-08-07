@@ -2260,8 +2260,9 @@ end
                 Library:Connect(ColLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
                     task.defer(function()
                         local contentHeight = ColLayout.Instance.AbsoluteContentSize.Y
-                        local padding = Column.Instance.AbsolutePadding.Top + Column.Instance.AbsolutePadding.Bottom
-                        Column.Instance.CanvasSize = UDim2New(0, 0, 0, math.ceil(contentHeight * 1.2) + padding)
+                        -- PaddingTop (12) + PaddingBottom (14) = 26
+                        local padding = 26
+                        Column.Instance.CanvasSize = UDim2New(0, 0, 0, contentHeight + padding + 60)
                     end)
                 end)
 
