@@ -73,7 +73,7 @@ local Library do
             Themes = "zoophack/Themes"
         },
 
-        Images = { -- you're welcome to reupload the images and replace it with your own links
+        Images = {
             ["Saturation"] = {"Saturation.png", "https://github.com/sametexe001/images/blob/main/saturation.png?raw=true" },
             ["Value"] = { "Value.png", "https://github.com/sametexe001/images/blob/main/value.png?raw=true" },
             ["Hue"] = { "Hue.png", "https://github.com/sametexe001/images/blob/main/horizontalhue.png?raw=true" },
@@ -81,7 +81,6 @@ local Library do
             ["Scrollbar"] =  { "Scrollbar.png", "https://github.com/sametexe001/images/blob/main/scrollbar.png?raw=true" },
         },
 
-        -- Ignore below
         Pages = { },
         Sections = { },
 
@@ -188,7 +187,6 @@ local Library do
     Library.Pages.__index = Library.Pages
     Library.Sections.__index = Library.Sections
 
-    -- Files
     for Index, Value in Library.Folders do 
         if not isfolder(Value) then
             makefolder(Value)
@@ -217,7 +215,6 @@ local Library do
     Library.Theme = TableClone(Themes["Default"])
     Library.Themes = Themes
 
-    -- Tweening
     local Tween = { } do
         Tween.__index = Tween
 
@@ -273,7 +270,6 @@ local Library do
         end
     end
 
-    -- Instances
     local Instances = { } do
         Instances.__index = Instances
 
@@ -467,7 +463,6 @@ local Library do
         end
     end
 
-    -- Custom font
     local CustomFont = { } do
         function CustomFont:New(Name, Weight, Style, Data)
             if isfile(Library.Folders.Assets .. "/" .. Name .. ".json") then
@@ -510,7 +505,6 @@ local Library do
         Library.BoldFont = CustomFont:Get("InterBold")
     end
 
-    -- Library
     Library.Holder = Instances:Create("ScreenGui", {
         Parent = gethui(),
         Name = "\0",
@@ -2055,7 +2049,6 @@ end
             Items["Right"] = Instances:Create("ScrollingFrame", {
                 Parent = Items["PageContent"].Instance,
                 Active = true,
-                AutomaticCanvasSize = Enum.AutomaticSize.Y,
                 AnchorPoint = Vector2New(1, 0),
                 ZIndex = 2,
                 BorderSizePixel = 0,
@@ -2081,11 +2074,15 @@ end
                 PaddingLeft = UDimNew(0, 7)
             }) 
 
-            Instances:Create("UIListLayout", {
+            local RightLayout = Instances:Create("UIListLayout", {
                 Parent = Items["Right"].Instance,
                 Padding = UDimNew(0, 14),
                 SortOrder = Enum.SortOrder.LayoutOrder
             }) 
+
+            Library:Connect(RightLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
+                Items["Right"].Instance.CanvasSize = UDim2New(0, 0, 0, RightLayout.Instance.AbsoluteContentSize.Y + 26)
+            end)
 
             Items["Left"] = Instances:Create("ScrollingFrame", {
                 Parent = Items["PageContent"].Instance,
@@ -2115,11 +2112,15 @@ end
                 PaddingLeft = UDimNew(0, 14)
             }) 
 
-            Instances:Create("UIListLayout", {
+            local LeftLayout = Instances:Create("UIListLayout", {
                 Parent = Items["Left"].Instance,
                 Padding = UDimNew(0, 14),
                 SortOrder = Enum.SortOrder.LayoutOrder
             }) 
+
+            Library:Connect(LeftLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
+                Items["Left"].Instance.CanvasSize = UDim2New(0, 0, 0, LeftLayout.Instance.AbsoluteContentSize.Y + 26)
+            end)
         end
 
         local Debounce = false 
@@ -2212,7 +2213,6 @@ end
                 local Column = Instances:Create("ScrollingFrame", {
                     Parent = self.Items["Columns"].Instance,
                     Active = true,
-                    AutomaticCanvasSize = Enum.AutomaticSize.Y,
                     ZIndex = 3,
                     BorderSizePixel = 0,
                     CanvasSize = UDim2New(0, 0, 0, 0),
@@ -2237,11 +2237,15 @@ end
                     PaddingRight = UDimNew(0, PaddingRight)
                 })
 
-                Instances:Create("UIListLayout", {
+                local ColLayout = Instances:Create("UIListLayout", {
                     Parent = Column.Instance,
                     Padding = UDimNew(0, 14),
                     SortOrder = Enum.SortOrder.LayoutOrder
                 })
+
+                Library:Connect(ColLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
+                    Column.Instance.CanvasSize = UDim2New(0, 0, 0, ColLayout.Instance.AbsoluteContentSize.Y + 26)
+                end)
 
                 return Column
             end
