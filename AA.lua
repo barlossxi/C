@@ -2089,7 +2089,9 @@ end
 
             Library:Connect(RightLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
                 task.defer(function()
-                    Items["Right"].Instance.CanvasSize = UDim2New(0, 0, 0, RightLayout.Instance.AbsoluteContentSize.Y + 400)
+                    local contentHeight = RightLayout.Instance.AbsoluteContentSize.Y
+                    local padding = Items["Right"].Instance.AbsolutePadding.Top + Items["Right"].Instance.AbsolutePadding.Bottom
+                    Items["Right"].Instance.CanvasSize = UDim2New(0, 0, 0, math.ceil(contentHeight * 1.2) + padding)
                 end)
             end)
 
@@ -2128,7 +2130,9 @@ end
 
             Library:Connect(LeftLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
                 task.defer(function()
-                    Items["Left"].Instance.CanvasSize = UDim2New(0, 0, 0, LeftLayout.Instance.AbsoluteContentSize.Y + 400)
+                    local contentHeight = LeftLayout.Instance.AbsoluteContentSize.Y
+                    local padding = Items["Left"].Instance.AbsolutePadding.Top + Items["Left"].Instance.AbsolutePadding.Bottom
+                    Items["Left"].Instance.CanvasSize = UDim2New(0, 0, 0, math.ceil(contentHeight * 1.2) + padding)
                 end)
             end)
         end
@@ -2255,7 +2259,9 @@ end
 
                 Library:Connect(ColLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
                     task.defer(function()
-                        Column.Instance.CanvasSize = UDim2New(0, 0, 0, ColLayout.Instance.AbsoluteContentSize.Y + 400)
+                        local contentHeight = ColLayout.Instance.AbsoluteContentSize.Y
+                        local padding = Column.Instance.AbsolutePadding.Top + Column.Instance.AbsolutePadding.Bottom
+                        Column.Instance.CanvasSize = UDim2New(0, 0, 0, math.ceil(contentHeight * 1.2) + padding)
                     end)
                 end)
 
