@@ -2081,13 +2081,14 @@ end
             }) 
 
             Library:Connect(RightLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-                Items["Right"].Instance.CanvasSize = UDim2New(0, 0, 0, RightLayout.Instance.AbsoluteContentSize.Y + 26)
+                task.defer(function()
+                    Items["Right"].Instance.CanvasSize = UDim2New(0, 0, 0, RightLayout.Instance.AbsoluteContentSize.Y + 50)
+                end)
             end)
 
             Items["Left"] = Instances:Create("ScrollingFrame", {
                 Parent = Items["PageContent"].Instance,
                 Active = true,
-                AutomaticCanvasSize = Enum.AutomaticSize.Y,
                 ZIndex = 2,
                 BorderSizePixel = 0,
                 CanvasSize = UDim2New(0, 0, 0, 0),
@@ -2119,7 +2120,9 @@ end
             }) 
 
             Library:Connect(LeftLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-                Items["Left"].Instance.CanvasSize = UDim2New(0, 0, 0, LeftLayout.Instance.AbsoluteContentSize.Y + 26)
+                task.defer(function()
+                    Items["Left"].Instance.CanvasSize = UDim2New(0, 0, 0, LeftLayout.Instance.AbsoluteContentSize.Y + 50)
+                end)
             end)
         end
 
@@ -2244,7 +2247,9 @@ end
                 })
 
                 Library:Connect(ColLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-                    Column.Instance.CanvasSize = UDim2New(0, 0, 0, ColLayout.Instance.AbsoluteContentSize.Y + 26)
+                    task.defer(function()
+                        Column.Instance.CanvasSize = UDim2New(0, 0, 0, ColLayout.Instance.AbsoluteContentSize.Y + 50)
+                    end)
                 end)
 
                 return Column
