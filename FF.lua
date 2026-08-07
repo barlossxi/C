@@ -1717,7 +1717,9 @@ end
 
             Library:Connect(PagesLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
                 task.defer(function()
-                    Items["Pages"].Instance.CanvasSize = UDim2New(0, 0, 0, PagesLayout.Instance.AbsoluteContentSize.Y + 20)
+                    local contentSize = PagesLayout.Instance.AbsoluteContentSize.Y
+                    local extraPadding = math.max(600, contentSize * 0.2)
+                    Items["Pages"].Instance.CanvasSize = UDim2New(0, 0, 0, contentSize + extraPadding)
                 end)
             end)
 
@@ -2353,7 +2355,7 @@ end
 
             Instances:Create("UIPadding", {
                 Parent = Items["Section"].Instance,
-                PaddingBottom = UDimNew(0, 12)
+                PaddingBottom = UDimNew(0, 18)
             }) 
 
             Instances:Create("UICorner", {
