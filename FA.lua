@@ -1691,7 +1691,6 @@ end
 
             Items["Pages"] = Instances:Create("ScrollingFrame", {
                 Parent = Items["Sidebar"].Instance,
-                AutomaticCanvasSize = Enum.AutomaticSize.Y,
                 ScrollBarThickness = 2,
                 ScrollBarImageTransparency = 0,
                 CanvasSize = UDim2New(0, 0, 0, 0),
@@ -1709,12 +1708,18 @@ end
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })  Items["Pages"]:AddToTheme({ScrollBarImageColor3 = "Accent"})
 
-            Instances:Create("UIListLayout", {
+            local PagesLayout = Instances:Create("UIListLayout", {
                 Parent = Items["Pages"].Instance,
                 Padding = UDimNew(0, Window.PagePadding),
                 HorizontalAlignment = Enum.HorizontalAlignment.Center,
                 SortOrder = Enum.SortOrder.LayoutOrder
-            }) 
+            })
+
+            Library:Connect(PagesLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
+                task.defer(function()
+                    Items["Pages"].Instance.CanvasSize = UDim2New(0, 0, 0, PagesLayout.Instance.AbsoluteContentSize.Y + 20)
+                end)
+            end)
 
             Instances:Create("UICorner", {
                 Parent = Items["MainFrame"].Instance,
