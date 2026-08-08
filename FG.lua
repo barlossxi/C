@@ -1940,11 +1940,18 @@ end
                 Debounce = false
                 Items["PageContent"].Instance.Visible = Bool
                 Items["PageContent"].Instance.Parent = Bool and Page.Window.Items["Inline"].Instance or Library.UnusedHolder.Instance
-                if Page.Search then 
-                    Items["Columns"]:Tween(nil, {Position = Bool and UDim2New(0, 0, 0, 100) or UDim2New(0, 0, 1, 0)})
+                local activeColumnsPosition
+                if Page.DirectSections then
+                    activeColumnsPosition = UDim2New(0, 0, 0, 0)
+                elseif Page.Search then
+                    activeColumnsPosition = UDim2New(0, 0, 0, 100)
                 else
-                    Items["Columns"]:Tween(nil, {Position = Bool and UDim2New(0, 0, 0, 55) or UDim2New(0, 0, 1, 0)})
+                    activeColumnsPosition = UDim2New(0, 0, 0, 55)
                 end
+
+                Items["Columns"]:Tween(nil, {
+                    Position = Bool and activeColumnsPosition or UDim2New(0, 0, 1, 0)
+                })
             end)            
         end
 
