@@ -1689,15 +1689,8 @@ end
                 BackgroundColor3 = FromRGB(24, 24, 24)
             }):AddToTheme({BackgroundColor3 = "Border"})
 
-            Items["Pages"] = Instances:Create("ScrollingFrame", {
+            Items["Pages"] = Instances:Create("Frame", {
                 Parent = Items["Sidebar"].Instance,
-                ScrollBarThickness = 0,
-                ScrollBarImageTransparency = 0,
-                CanvasSize = UDim2New(0, 0, 0, 0),
-                ScrollBarImageColor3 = Library.Theme.Accent,
-                MidImage = Library:GetImage("Scrollbar"),
-                TopImage = Library:GetImage("Scrollbar"),
-                BottomImage = Library:GetImage("Scrollbar"),
                 BorderColor3 = FromRGB(0, 0, 0),
                 Name = "\0",
                 BackgroundTransparency = 1,
@@ -1706,22 +1699,14 @@ end
                 ZIndex = 2,
                 BorderSizePixel = 0,
                 BackgroundColor3 = FromRGB(255, 255, 255)
-            })  Items["Pages"]:AddToTheme({ScrollBarImageColor3 = "Accent"})
+            })
 
-            local PagesLayout = Instances:Create("UIListLayout", {
+            Instances:Create("UIListLayout", {
                 Parent = Items["Pages"].Instance,
                 Padding = UDimNew(0, Window.PagePadding),
                 HorizontalAlignment = Enum.HorizontalAlignment.Center,
                 SortOrder = Enum.SortOrder.LayoutOrder
             })
-
-            Library:Connect(PagesLayout.Instance:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-                task.defer(function()
-                    local contentSize = PagesLayout.Instance.AbsoluteContentSize.Y
-                    local extraPadding = math.max(600, contentSize * 0.2)
-                    Items["Pages"].Instance.CanvasSize = UDim2New(0, 0, 0, contentSize + extraPadding)
-                end)
-            end)
 
             Instances:Create("UICorner", {
                 Parent = Items["MainFrame"].Instance,
