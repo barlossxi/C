@@ -1,5 +1,3 @@
--- Public loader for GitHub/CDN distribution.
--- Configure getgenv().Config before loading this file.
 local Global = getgenv()
 local Config = type(Global.Config) == "table" and Global.Config or {}
 local BridgeURL = tostring(Config.BridgeUrl or Global.BridgeURL or Global.bridgeurl or "localhost:16384")
@@ -7,7 +5,7 @@ BridgeURL = BridgeURL:gsub("^https?://", ""):gsub("/+$", "")
 
 Global.BridgeURL = BridgeURL
 Global.bridgeurl = BridgeURL
-Global.MCP_ScriptMappingWorkers = tonumber(Config.MaxInFlight) or Global.MCP_ScriptMappingWorkers or 24
+Global.MCP_ScriptMappingWorkers = tonumber(Config.MaxInFlight) or Global.MCP_ScriptMappingWorkers or 100
 Global.MCP_RequestTimeoutSeconds = tonumber(Config.RequestTimeout) or Global.MCP_RequestTimeoutSeconds or 20
 Global.MCP_RequestsPerMinute = tonumber(Config.RequestsPerMinute) or Global.MCP_RequestsPerMinute or 1350
 Global.MCP_UseLuaExpert = Config.UseLuaExpert ~= false
