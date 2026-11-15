@@ -164,14 +164,14 @@ end
 
 -- TRAIN STATE (read from the game's own minigame table, cached)
 
-local function GetTrainState()
+local function GetTrainState(Force)
     local State = getgenv().__BBTrainState
 
     if type(State) == "table" and type(rawget(State, "seq")) == "table" and type(rawget(State, "idx")) == "number" then
         return State
     end
 
-    if not IsTrainActive() then
+    if not Force and not IsTrainActive() then
         return nil
     end
 
@@ -496,9 +496,10 @@ local function RefreshSellDropdown()
         Signature[#Signature + 1] = Pet.id .. ":" .. PetPrice(Pet)
     end
 
-    local Sig = table.concat(Signature, ",")
+    local Sig = tostring(getgenv().__BBUIGen or 0) .. "|" .. table.concat(Signature, ",")
 
-    -- Rebuilding a WindUI dropdown with 80+ options is heavy; skip when nothing changed.
+    -- A freshly built dropdown object starts empty, so the signature carries
+    -- the UI generation; otherwise a re-exec would skip the very first fill.
     if getgenv().__BBSellSig == Sig then
         return
     end
@@ -887,28 +888,39 @@ local function StartBarStep()
         return false
     end
 
+    local Top = Inner.AbsolutePosition.Y
+    local Height = Inner.AbsoluteSize.Y
+
+    if Height <= 0 then
+        return false
+    end
+
     local MarkerY = Marker.AbsolutePosition.Y + Marker.AbsoluteSize.Y * 0.5
-    local Perfect = false
+    local Progress = 1 - (MarkerY - Top) / Height
+
+    -- A new sweep starts at the bottom: re-arm without relying on the GUI
+    -- being disabled in between runs (that is why round 2 used to skip).
+    if Progress < 0.15 or (Parts.LastProgress and Progress < Parts.LastProgress - 0.25) then
+        Parts.Pressed = false
+    end
+
+    Parts.LastProgress = Progress
 
     if Parts.Pressed then
         return false
     end
 
+    local Perfect = false
+
     -- Primary: the drawn "Bonus" band is the perfect zone, so crossing its
     -- lower edge means the bar is already inside PERFECT.
-    if Zone and Zone.Parent then
-        local ZoneBottom = Zone.AbsolutePosition.Y + Zone.AbsoluteSize.Y
-        Perfect = MarkerY <= ZoneBottom
+    if Zone and Zone.Parent and Zone.AbsoluteSize.Y > 0 then
+        Perfect = MarkerY <= Zone.AbsolutePosition.Y + Zone.AbsoluteSize.Y
     end
 
     -- Fallback: derive progress from the bar body when the band is missing.
     if not Perfect then
-        local Top = Inner.AbsolutePosition.Y
-        local Height = Inner.AbsoluteSize.Y
-
-        if Height > 0 then
-            Perfect = 1 - (MarkerY - Top) / Height >= 0.86
-        end
+        Perfect = Progress >= 0.75
     end
 
     if Perfect then
@@ -943,6 +955,7 @@ local function FarmStep()
 
     if StartParts then
         StartParts.Pressed = false
+        StartParts.LastProgress = nil
     end
 
     local Now = os.clock()
@@ -964,14 +977,15 @@ end
 
 task.spawn(function()
     pcall(function()
-        if IsTrainActive() then
-            GetTrainState()
+        if GetTrainState(true) then
             GetPressFn()
         end
     end)
 end)
 
 -- LOOPS
+
+local NextSellAt = 0
 
 task.spawn(function()
     while getgenv().__BBGen == Gen do
@@ -984,33 +998,29 @@ task.spawn(function()
             if Config["Auto Farm Pet"] == true then
                 FarmStep()
             end
+
+            if os.clock() >= NextSellAt then
+                if getgenv().__BBSellDirty then
+                    getgenv().__BBSellDirty = nil
+                    task.spawn(function()
+                        pcall(RefreshSellDropdown)
+                    end)
+                end
+
+                if Config["Auto Sell Pet"] == true then
+                    local OkSell, Value = pcall(SellTick)
+                    NextSellAt = os.clock() + ((OkSell and type(Value) == "number") and Value or 1)
+                else
+                    NextSellAt = os.clock() + 0.6
+                end
+            end
         end)
 
         if Ok then
-            task.wait()
+            task.wait(0.03)
         else
             task.wait(0.1)
         end
-    end
-end)
-
-task.spawn(function()
-    while getgenv().__BBGen == Gen do
-        local Delay = 0.5
-
-        if getgenv().__BBSellDirty then
-            getgenv().__BBSellDirty = nil
-            task.spawn(function()
-                pcall(RefreshSellDropdown)
-            end)
-        end
-
-        if Config["Auto Sell Pet"] == true then
-            local Ok, Value = pcall(SellTick)
-            Delay = (Ok and type(Value) == "number") and Value or 1
-        end
-
-        task.wait(Delay)
     end
 end)
 
@@ -1059,6 +1069,11 @@ task.spawn(function()
 
     getgenv().__BBTrainWindow = Window
 
+    -- New dropdown objects: invalidate cached dropdown signatures.
+    getgenv().__BBUIGen = (getgenv().__BBUIGen or 0) + 1
+    getgenv().__BBSellSig = nil
+    getgenv().__BBTrainPetsSignature = nil
+
     local Tab = Window:Tab({ Title = "Treadmill", Icon = "dumbbell" })
 
     Tab:Section({ Title = "Auto Treadmill" })
@@ -1074,6 +1089,14 @@ task.spawn(function()
 
             if State then
                 Config["Auto Farm Pet"] = false
+
+                task.spawn(function()
+                    pcall(function()
+                        if GetTrainState(true) then
+                            GetPressFn()
+                        end
+                    end)
+                end)
             end
         end,
     })
