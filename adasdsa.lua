@@ -12,6 +12,7 @@ end
 
 local Players = cloneref(game:GetService("Players"))
 local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
+local GuiService = cloneref(game:GetService("GuiService"))
 local VirtualInputManager = cloneref(game:GetService("VirtualInputManager"))
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
@@ -27,7 +28,7 @@ local PetsRemote = Pets:WaitForChild("PetsRemote")
 
 Config = Config or {
     ["Auto Treadmill"] = false,
-    ["Press Delay"] = 0.08,
+    ["Press Delay"] = 0.04,
     ["Run Cooldown"] = 1.2,
     ["Spot Distance"] = 18,
     ["Pet Id"] = 0,
@@ -38,17 +39,16 @@ Config = Config or {
     ["Farm Pet Id"] = 0,
 }
 
+local Gen = (getgenv().__BBGen or 0) + 1
+getgenv().__BBGen = Gen
+
 getgenv().__BBTrainMaxed = getgenv().__BBTrainMaxed or {}
 getgenv().__BBTrainPickTries = getgenv().__BBTrainPickTries or 0
-
-local Gen = (getgenv().__BBTrainGen or 0) + 1
-getgenv().__BBTrainGen = Gen
-getgenv().__BBTrainToken = (getgenv().__BBTrainToken or 0) + 1
-getgenv().__BBTrainBeat = 0
 
 -- FUNCTIONS
 
 local LETTERS = { "Q", "E", "R", "T" }
+local KEYCODES = { Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.R, Enum.KeyCode.T }
 
 local function IsRunning()
     return Config["Auto Treadmill"] == true
@@ -56,6 +56,16 @@ end
 
 local function IsTrainActive()
     local Gui = PlayerGui:FindFirstChild("BBTrainKeys")
+    return Gui ~= nil and Gui.Enabled == true
+end
+
+local function IsRunActive()
+    local Gui = PlayerGui:FindFirstChild("BBRun4")
+    return Gui ~= nil and Gui.Enabled == true
+end
+
+local function IsStartBarOpen()
+    local Gui = PlayerGui:FindFirstChild("BBStart3")
     return Gui ~= nil and Gui.Enabled == true
 end
 
@@ -93,60 +103,43 @@ local function FindDeep(Parent, Name, MaxDepth)
     return Found
 end
 
-local function GetTrainState()
-    local State = getgenv().__BBTrainState
-
-    if type(State) == "table" and type(rawget(State, "seq")) == "table" and type(rawget(State, "idx")) == "number" then
-        return State
-    end
-
-    -- Never scan the heap while idle; only look once the minigame is actually running.
-    if not IsTrainActive() then
-        return nil
-    end
-
-    local Now = os.clock()
-
-    if Now < (getgenv().__BBTrainStateNext or 0) then
-        return nil
-    end
-
-    getgenv().__BBTrainStateNext = Now + 5
-
-    local Ok, Found = pcall(filtergc, "table", { Keys = { "seq", "idx" } })
-
-    if not Ok or type(Found) ~= "table" or #Found == 0 then
-        return nil
-    end
-
-    getgenv().__BBTrainState = Found[1]
-
-    return Found[1]
-end
-
-local function GetTrainSpot()
-    local Plot = LocalPlayer:GetAttribute("BBPlot")
-
-    if type(Plot) ~= "number" then
-        return nil
-    end
-
-    local Map = workspace:FindFirstChild("Map")
-    local Markers = Map and Map:FindFirstChild("Markers")
-    local Plots = Markers and Markers:FindFirstChild("Plots")
-    local PlotFolder = Plots and Plots:FindFirstChild("Plot" .. Plot)
-
-    return PlotFolder and PlotFolder:FindFirstChild("TrainerSpot")
-end
-
-local function GetTrainPrompt(Spot)
-    local Holder = Spot and Spot:FindFirstChild("BBTrainPrompt")
-    return Holder and Holder:FindFirstChildOfClass("ProximityPrompt")
-end
-
 local function GetRootPart()
     local Character = LocalPlayer.Character
     return Character and Character:FindFirstChild("HumanoidRootPart")
+end
+
+-- Non-blocking key send: key down now, key up on the next frame.
+local function PressKey(KeyCode)
+    VirtualInputManager:SendKeyEvent(true, KeyCode, false, game)
+
+    task.delay(0.02, function()
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(false, KeyCode, false, game)
+        end)
+    end)
+end
+
+-- Connection based GUI click (primary), signal fire as fallback.
+local function GetConnect(Target)
+    local Clicked = false
+    local Events = { "Activated", "MouseButton1Down", "MouseButton1Click", "MouseButton1Up" }
+
+    for _, EventName in next, Events do
+        pcall(function()
+            for _, Connection in next, getconnections(Target[EventName]) do
+                pcall(function()
+                    if type(Connection.Function) ~= "function" then
+                        return
+                    end
+
+                    Connection.Function()
+                    Clicked = true
+                end)
+            end
+        end)
+    end
+
+    return Clicked
 end
 
 local function ClosePicker()
@@ -154,10 +147,14 @@ local function ClosePicker()
     local X = Gui and FindDeep(Gui, "X", 2)
 
     if X then
-        pcall(function()
-            X.Activated:Fire()
-            X.MouseButton1Click:Fire()
-        end)
+        if not GetConnect(X) then
+            pcall(function()
+                X.Activated:Fire()
+            end)
+            pcall(function()
+                X.MouseButton1Click:Fire()
+            end)
+        end
     end
 
     pcall(function()
@@ -165,16 +162,144 @@ local function ClosePicker()
     end)
 end
 
-local function PressKey(KeyCode)
-    VirtualInputManager:SendKeyEvent(true, KeyCode, false, game)
-    task.wait(0.04)
-    VirtualInputManager:SendKeyEvent(false, KeyCode, false, game)
+-- TRAIN STATE (read from the game's own minigame table, cached)
+
+local function GetTrainState()
+    local State = getgenv().__BBTrainState
+
+    if type(State) == "table" and type(rawget(State, "seq")) == "table" and type(rawget(State, "idx")) == "number" then
+        return State
+    end
+
+    if not IsTrainActive() then
+        return nil
+    end
+
+    local Now = os.clock()
+
+    if Now < (getgenv().__BBStateNext or 0) then
+        return nil
+    end
+
+    getgenv().__BBStateNext = Now + 2
+
+    local Ok, Found = pcall(filtergc, "table", { Keys = { "seq", "idx", "keyLit" } })
+
+    if not Ok or type(Found) ~= "table" or #Found == 0 then
+        return nil
+    end
+
+    getgenv().__BBTrainState = Found[1]
+    getgenv().__BBPressFn = nil
+
+    return Found[1]
 end
 
-local PetRows
-local PetRowsStamp = 0
-local SellList = {}
-local SellListStamp = 0
+-- The game ships its own press handler; calling it removes input latency entirely.
+local function GetPressFn()
+    local Cached = getgenv().__BBPressFn
+
+    if type(Cached) == "function" then
+        return Cached
+    end
+
+    local State = getgenv().__BBTrainState
+
+    if type(State) ~= "table" then
+        return nil
+    end
+
+    local Now = os.clock()
+
+    if Now < (getgenv().__BBPressScanNext or 0) then
+        return nil
+    end
+
+    -- Scanning the whole heap is expensive; never retry on every frame.
+    getgenv().__BBPressScanNext = Now + 3
+
+    local GetUpvalues = getupvalues or (debug and debug.getupvalues)
+
+    if type(GetUpvalues) ~= "function" then
+        return nil
+    end
+
+    local Ok, Functions = pcall(getgc, true)
+
+    if not Ok or type(Functions) ~= "table" then
+        return nil
+    end
+
+    for _, Object in ipairs(Functions) do
+        if type(Object) == "function" then
+            local OkUp, Upvalues = pcall(GetUpvalues, Object)
+
+            if OkUp then
+                local Matched
+
+                for _, Value in next, Upvalues do
+                    if Value == State then
+                        Matched = true
+                        break
+                    end
+                end
+
+                if Matched then
+                    local OkName, Name = pcall(debug.info, Object, "n")
+
+                    if OkName and Name == "press" then
+                        getgenv().__BBPressFn = Object
+                        return Object
+                    end
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+-- START BAR GEOMETRY (perfect zone is the top band of the tube)
+local StartParts
+
+local function GetStartParts()
+    local Gui = PlayerGui:FindFirstChild("BBStart3")
+
+    if not Gui then
+        StartParts = nil
+        return nil
+    end
+
+    if StartParts and StartParts.Gui == Gui and StartParts.Marker.Parent then
+        return StartParts
+    end
+
+    local Marker, Zone, Inner
+
+    IterateDeep(Gui, 4, function(Node)
+        if not Marker and Node.Name == "Marker" then
+            Marker = Node
+        elseif not Zone and Node.Name == "Bonus" then
+            Zone = Node
+        elseif not Inner and Node.Name == "In" then
+            Inner = Node
+        end
+    end)
+
+    if not (Marker and Inner) then
+        return nil
+    end
+
+    StartParts = {
+        Gui = Gui,
+        Marker = Marker,
+        Zone = Zone,
+        Inner = Inner,
+        Pressed = false,
+    }
+
+    return StartParts
+end
 
 local function PetPrice(Pet)
     return tonumber(Pet.price) or 0
@@ -200,6 +325,11 @@ local function SellLabel(Pet)
 
     return string.format("%s (%d) · $%d", Name, Pet.id, PetPrice(Pet))
 end
+
+local PetRows
+local PetRowsStamp = 0
+local SellList = {}
+local SellListStamp = 0
 
 PetsRemote.OnClientEvent:Connect(function(Tag, Data)
     if Tag == "List" and type(Data) == "table" and type(Data.pets) == "table" then
@@ -228,92 +358,6 @@ end
 
 local function IsMaxedRow(Row)
     return type(Row) == "table" and Row[3] == true
-end
-
-local function CollectPets()
-    local Gui = PlayerGui:FindFirstChild("BBTrainPick")
-
-    if not Gui then
-        return
-    end
-
-    local List = {}
-
-    IterateDeep(Gui, 4, function(Child)
-        local Id = Child:IsA("TextButton") and Child.Name:match("^Row(%d+)$")
-
-        if not Id then
-            return
-        end
-
-        local Text = ""
-
-        if Child:IsA("TextButton") and Child.Text ~= "" then
-            Text = Child.Text
-        end
-
-        if Text == "" then
-            IterateDeep(Child, 3, function(Desc)
-                if Text == "" and Desc:IsA("TextLabel") and Desc.Text ~= "" then
-                    Text = Desc.Text
-                end
-            end)
-        end
-
-        List[#List + 1] = {
-            Id = tonumber(Id),
-            Name = Text:match("^([^|]+)") or ("Pet " .. Id),
-            Maxed = Text:find("MAX", 1, true) ~= nil,
-        }
-    end)
-
-    if #List == 0 then
-        return
-    end
-
-    table.sort(List, function(A, B)
-        return A.Id < B.Id
-    end)
-
-    getgenv().__BBTrainPets = List
-
-    local RowMaxed = getgenv().__BBTrainRowMaxed or {}
-
-    local Labels = { "Auto" }
-    local Signature = "Auto"
-
-    for _, Pet in ipairs(List) do
-        Pet.Name = Pet.Name:match("^%s*(.-)%s*$")
-        Pet.Maxed = Pet.Maxed or RowMaxed[Pet.Id] == true
-
-        Labels[#Labels + 1] = string.format(
-            "%s (%d)%s",
-            Pet.Name,
-            Pet.Id,
-            Pet.Maxed and " [MAX]" or ""
-        )
-        Signature = Signature .. "|" .. Pet.Id .. (Pet.Maxed and "M" or "")
-    end
-
-    local Dropdown = getgenv().__BBTrainDropdown
-
-    if Dropdown and getgenv().__BBTrainPetsSignature ~= Signature then
-        getgenv().__BBTrainPetsSignature = Signature
-
-        local Selected = "Auto"
-
-        for Index, Pet in ipairs(List) do
-            if Pet.Id == Config["Pet Id"] then
-                Selected = Labels[Index + 1]
-                break
-            end
-        end
-
-        pcall(function()
-            Dropdown:Refresh(Labels)
-            Dropdown:Select(Selected)
-        end)
-    end
 end
 
 local function SelectPet(Rows)
@@ -500,43 +544,6 @@ local function RefreshSellDropdown()
     end
 end
 
-local function IsRunActive()
-    local Gui = PlayerGui:FindFirstChild("BBRun4")
-    return Gui ~= nil and Gui.Enabled == true
-end
-
-local function IsStartBarOpen()
-    local Gui = PlayerGui:FindFirstChild("BBStart3")
-    return Gui ~= nil and Gui.Enabled == true
-end
-
-local function GetStartMarker()
-    local Gui = PlayerGui:FindFirstChild("BBStart3")
-
-    if not Gui then
-        getgenv().__BBStartMarker = nil
-        return nil
-    end
-
-    local Cached = getgenv().__BBStartMarker
-
-    if Cached and Cached.Parent then
-        return Cached
-    end
-
-    local Found
-
-    IterateDeep(Gui, 3, function(Node)
-        if not Found and Node:IsA("GuiObject") and Node.Name == "Marker" then
-            Found = Node
-        end
-    end)
-
-    getgenv().__BBStartMarker = Found
-
-    return Found
-end
-
 local function FarmPetId()
     local Chosen = Config["Farm Pet Id"] or 0
 
@@ -572,7 +579,7 @@ local function EnsureMounted()
         PetsRemote:FireServer("Ride", Want)
     end)
 
-    local Deadline = os.clock() + 2
+    local Deadline = os.clock() + 1.5
 
     while os.clock() < Deadline do
         if LocalPlayer:GetAttribute("BBRidingId") == Want then
@@ -592,53 +599,19 @@ local function GoToStart()
     end
 
     RootPart.CFrame = CFrame.lookAt(Vector3.new(0, 16, 55), Vector3.new(0, 16, 70))
-    task.wait(0.3)
+    task.wait(0.2)
     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
 
-    local Deadline = os.clock() + 3
+    local Deadline = os.clock() + 2
 
     while os.clock() < Deadline do
         if IsStartBarOpen() or IsRunActive() then
             break
         end
-        task.wait(0.08)
+        task.wait(0.05)
     end
 
     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
-end
-
-local function FarmStep()
-    if Config["Auto Farm Pet"] ~= true then
-        return 0.5
-    end
-
-    if IsRunActive() then
-        PressKey(Enum.KeyCode.Space)
-        return 0.18
-    end
-
-    if IsStartBarOpen() then
-        local Marker = GetStartMarker()
-
-        if Marker then
-            local Y = Marker.AbsolutePosition.Y
-
-            if Y >= 112 and Y <= 190 then
-                PressKey(Enum.KeyCode.Space)
-                return 0.4
-            end
-        end
-
-        return 0.03
-    end
-
-    if not EnsureMounted() then
-        return 2
-    end
-
-    GoToStart()
-
-    return 1.5
 end
 
 local function BuildTrainPets(Rows)
@@ -705,190 +678,324 @@ local function BuildTrainPets(Rows)
     end
 end
 
-local function OpenTrain(Spot, Prompt)
-    local RootPart = GetRootPart()
+-- PRESS ENGINE (frame cadence, zero input latency when the internal handler is found)
 
-    if not RootPart then
-        return false
-    end
+local LastIdx = -1
+local StallCount = 0
+local LastFallbackAt = 0
 
-    if (RootPart.Position - Spot.Position).Magnitude > Config["Spot Distance"] then
-        RootPart.CFrame = CFrame.new(Spot.Position + Vector3.new(0, 2.5, 6))
-        task.wait(0.35)
-    end
-
-    local Opened = os.clock()
-
-    if not pcall(fireproximityprompt, Prompt) then
-        PressKey(Enum.KeyCode.E)
-    end
-
-    local Deadline = os.clock() + 2.5
-
-    while os.clock() < Deadline and PetRowsStamp <= Opened do
-        task.wait(0.05)
-    end
-
-    if not PetRows or #PetRows == 0 or PetRowsStamp <= Opened then
-        return false
-    end
-
-    local RowMaxed = {}
-
-    for _, Row in ipairs(PetRows) do
-        local PetId = PetIdOf(Row)
-
-        if PetId and IsMaxedRow(Row) then
-            RowMaxed[PetId] = true
-        end
-    end
-
-    getgenv().__BBTrainRowMaxed = RowMaxed
-
-    task.spawn(function()
-        pcall(BuildTrainPets, PetRows)
-    end)
-
-    local Pick = SelectPet(PetRows)
-
-    if not Pick then
-        getgenv().__BBTrainAllMaxed = os.clock()
-        ClosePicker()
-        return false
-    end
-
-    TrainRemote:FireServer("Pick", Pick)
-    getgenv().__BBTrainLastPick = Pick
-
-    local StartDeadline = os.clock() + 2
-
-    while os.clock() < StartDeadline and not IsTrainActive() do
-        task.wait(0.05)
-    end
-
-    if IsTrainActive() then
-        getgenv().__BBTrainPickTries = 0
-        return true
-    end
-
-    getgenv().__BBTrainPickTries = (getgenv().__BBTrainPickTries or 0) + 1
-
-    return false
-end
-
-local function Step()
-    if not IsRunning() then
-        return 0.5
+local function TrainPressStep()
+    if not IsTrainActive() then
+        LastIdx = -1
+        StallCount = 0
+        return
     end
 
     local State = GetTrainState()
 
-    if State and IsTrainActive() then
-        local Seq = rawget(State, "seq")
-        local Index = rawget(State, "idx")
-        local Key = Seq[Index] and LETTERS[Seq[Index]]
+    if not State or State.maxed or State.rush or State.on ~= true then
+        return
+    end
 
-        if Key then
-            PressKey(Enum.KeyCode[Key])
-            return Config["Press Delay"]
+    local Seq = rawget(State, "seq")
+    local Idx = rawget(State, "idx")
+    local Key = Seq[Idx]
+
+    if not Key then
+        return
+    end
+
+    if Idx ~= LastIdx then
+        LastIdx = Idx
+        StallCount = 0
+    else
+        StallCount = StallCount + 1
+    end
+
+    -- If the index never moves the cached table is stale: drop it and re-read.
+    if StallCount >= 120 then
+        StallCount = 0
+        LastIdx = -1
+        getgenv().__BBTrainState = nil
+        getgenv().__BBPressFn = nil
+        return
+    end
+
+    local Press = GetPressFn()
+
+    if Press then
+        pcall(Press, Key)
+        return
+    end
+
+    local KeyCode = KEYCODES[Key]
+    local Now = os.clock()
+
+    if KeyCode and Now - LastFallbackAt >= Config["Press Delay"] then
+        LastFallbackAt = Now
+        PressKey(KeyCode)
+    end
+end
+
+-- TRAIN OPEN / PICK STATE MACHINE (never blocks the frame loop)
+
+local TrainPhase = nil
+local TrainPhaseAt = 0
+local TrainOpenedAt = 0
+local NextOpenAt = 0
+
+local function GetTrainSpot()
+    local Plot = LocalPlayer:GetAttribute("BBPlot")
+
+    if type(Plot) ~= "number" then
+        return nil
+    end
+
+    local Map = workspace:FindFirstChild("Map")
+    local Markers = Map and Map:FindFirstChild("Markers")
+    local Plots = Markers and Markers:FindFirstChild("Plots")
+    local PlotFolder = Plots and Plots:FindFirstChild("Plot" .. Plot)
+
+    return PlotFolder and PlotFolder:FindFirstChild("TrainerSpot")
+end
+
+local function GetTrainPrompt(Spot)
+    local Holder = Spot and Spot:FindFirstChild("BBTrainPrompt")
+    return Holder and Holder:FindFirstChildOfClass("ProximityPrompt")
+end
+
+local function TrainManageStep()
+    if IsTrainActive() then
+        TrainPhase = nil
+        return
+    end
+
+    local Now = os.clock()
+
+    if TrainPhase == "rows" then
+        if PetRowsStamp > TrainOpenedAt and PetRows and #PetRows > 0 then
+            local RowMaxed = {}
+
+            for _, Row in ipairs(PetRows) do
+                local PetId = PetIdOf(Row)
+
+                if PetId and IsMaxedRow(Row) then
+                    RowMaxed[PetId] = true
+                end
+            end
+
+            getgenv().__BBTrainRowMaxed = RowMaxed
+
+            task.spawn(function()
+                pcall(BuildTrainPets, PetRows)
+            end)
+
+            local Pick = SelectPet(PetRows)
+
+            if not Pick then
+                getgenv().__BBTrainAllMaxed = os.clock()
+                ClosePicker()
+                TrainPhase = nil
+                NextOpenAt = os.clock() + 120
+                return
+            end
+
+            TrainRemote:FireServer("Pick", Pick)
+            getgenv().__BBTrainLastPick = Pick
+            TrainPhase = "start"
+            TrainPhaseAt = os.clock()
+            return
         end
 
-        return 0.1
+        if Now - TrainOpenedAt > 3 then
+            ClosePicker()
+            TrainPhase = nil
+            NextOpenAt = os.clock() + 4
+        end
+
+        return
     end
 
-    local PickGui = PlayerGui:FindFirstChild("BBTrainPick")
-    local HasRows = false
+    if TrainPhase == "start" then
+        if IsTrainActive() then
+            getgenv().__BBTrainPickTries = 0
+            getgenv().__BBTrainAllMaxed = nil
+            TrainPhase = nil
+            NextOpenAt = os.clock() + Config["Run Cooldown"]
+            return
+        end
 
-    if PickGui and PickGui.Enabled then
-        IterateDeep(PickGui, 3, function(Child)
-            if not HasRows and Child:IsA("TextButton") and Child.Name:match("^Row%d+$") then
-                HasRows = true
-            end
-        end)
+        if Now - TrainPhaseAt > 2 then
+            getgenv().__BBTrainPickTries = (getgenv().__BBTrainPickTries or 0) + 1
+            TrainPhase = nil
+            NextOpenAt = os.clock() + 1.5
+        end
+
+        return
     end
 
-    if HasRows then
-        ClosePicker()
-        return 1
+    if Now < NextOpenAt then
+        return
     end
 
     local Spot = GetTrainSpot()
     local Prompt = GetTrainPrompt(Spot)
 
-    if not (Spot and Prompt and Prompt.Enabled) then
-        return 0.5
+    if not (Spot and Prompt and Prompt.Enabled and Prompt.ActionText == "Train") then
+        NextOpenAt = Now + 0.6
+        return
     end
 
-    if Prompt.ActionText ~= "Train" then
-        return 0.5
+    local RootPart = GetRootPart()
+
+    if not RootPart then
+        NextOpenAt = Now + 1
+        return
+    end
+
+    if (RootPart.Position - Spot.Position).Magnitude > Config["Spot Distance"] then
+        RootPart.CFrame = CFrame.new(Spot.Position + Vector3.new(0, 2.5, 6))
+        task.wait(0.3)
+    end
+
+    TrainOpenedAt = os.clock()
+
+    if not pcall(fireproximityprompt, Prompt) then
+        PressKey(Enum.KeyCode.E)
+    end
+
+    TrainPhase = "rows"
+end
+
+-- FARM (ride to start, then press exactly on the perfect band)
+
+local NextTravelAt = 0
+local LastRunPressAt = 0
+
+local function StartBarStep()
+    local Parts = GetStartParts()
+
+    if not Parts then
+        return false
+    end
+
+    local Marker = Parts.Marker
+    local Zone = Parts.Zone
+    local Inner = Parts.Inner
+
+    if not (Marker and Marker.Parent and Inner and Inner.Parent) then
+        return false
+    end
+
+    local MarkerY = Marker.AbsolutePosition.Y + Marker.AbsoluteSize.Y * 0.5
+    local Perfect = false
+
+    if Parts.Pressed then
+        return false
+    end
+
+    -- Primary: the drawn "Bonus" band is the perfect zone, so crossing its
+    -- lower edge means the bar is already inside PERFECT.
+    if Zone and Zone.Parent then
+        local ZoneBottom = Zone.AbsolutePosition.Y + Zone.AbsoluteSize.Y
+        Perfect = MarkerY <= ZoneBottom
+    end
+
+    -- Fallback: derive progress from the bar body when the band is missing.
+    if not Perfect then
+        local Top = Inner.AbsolutePosition.Y
+        local Height = Inner.AbsoluteSize.Y
+
+        if Height > 0 then
+            Perfect = 1 - (MarkerY - Top) / Height >= 0.86
+        end
+    end
+
+    if Perfect then
+        Parts.Pressed = true
+        PressKey(Enum.KeyCode.Space)
+        return true
+    end
+
+    return false
+end
+
+local function FarmStep()
+    if Config["Auto Farm Pet"] ~= true then
+        return
+    end
+
+    if IsRunActive() then
+        local Now = os.clock()
+
+        if Now - LastRunPressAt >= 0.18 then
+            LastRunPressAt = Now
+            PressKey(Enum.KeyCode.Space)
+        end
+
+        return
+    end
+
+    if IsStartBarOpen() then
+        StartBarStep()
+        return
+    end
+
+    if StartParts then
+        StartParts.Pressed = false
     end
 
     local Now = os.clock()
 
-    -- Opening the picker makes the game build all pet rows (heavy). Never reopen it in a tight loop.
-    if Now < (getgenv().__BBOpenNext or 0) then
-        return 1
+    if Now < NextTravelAt then
+        return
     end
 
-    if OpenTrain(Spot, Prompt) then
-        return Config["Run Cooldown"]
+    if not EnsureMounted() then
+        NextTravelAt = Now + 2
+        return
     end
 
-    if (getgenv().__BBTrainAllMaxed or 0) > os.clock() - 180 then
-        return 90
-    end
-
-    getgenv().__BBOpenNext = os.clock() + 4
-
-    return 4
+    GoToStart()
+    NextTravelAt = os.clock() + 1.2
 end
+
+-- WARM UP (resolve the minigame table + handler before the first run)
+
+task.spawn(function()
+    pcall(function()
+        if IsTrainActive() then
+            GetTrainState()
+            GetPressFn()
+        end
+    end)
+end)
 
 -- LOOPS
 
-local function Worker(Token)
-    while getgenv().__BBTrainToken == Token and IsRunning() do
-        getgenv().__BBTrainBeat = os.clock()
-
-        local Ok, Delay = pcall(Step)
-
-        if type(Delay) ~= "number" then
-            Delay = 0.5
-        end
-
-        local Deadline = os.clock() + (Ok and Delay or 0.5)
-        local ActiveToken = getgenv().__BBTrainToken
-
-        while getgenv().__BBTrainToken == ActiveToken do
-            getgenv().__BBTrainBeat = os.clock()
-
-            local Remaining = Deadline - os.clock()
-
-            if Remaining <= 0 then
-                break
+task.spawn(function()
+    while getgenv().__BBGen == Gen do
+        local Ok = pcall(function()
+            if IsRunning() then
+                TrainPressStep()
+                TrainManageStep()
             end
 
-            task.wait(math.min(Remaining, 0.2))
-        end
-    end
-end
+            if Config["Auto Farm Pet"] == true then
+                FarmStep()
+            end
+        end)
 
-task.spawn(function()
-    while task.wait(1) do
-        if getgenv().__BBTrainGen ~= Gen then
-            return
-        end
-
-        if IsRunning() and os.clock() - (getgenv().__BBTrainBeat or 0) > 5 then
-            local Token = (getgenv().__BBTrainToken or 0) + 1
-            getgenv().__BBTrainToken = Token
-            getgenv().__BBTrainBeat = os.clock()
-            task.spawn(Worker, Token)
+        if Ok then
+            task.wait()
+        else
+            task.wait(0.1)
         end
     end
 end)
 
 task.spawn(function()
-    while getgenv().__BBTrainGen == Gen do
+    while getgenv().__BBGen == Gen do
         local Delay = 0.5
 
         if getgenv().__BBSellDirty then
@@ -904,20 +1011,6 @@ task.spawn(function()
         end
 
         task.wait(Delay)
-    end
-end)
-
-task.spawn(function()
-    while task.wait(0.1) do
-        if getgenv().__BBTrainGen ~= Gen then
-            return
-        end
-
-        pcall(function()
-            if Config["Auto Farm Pet"] == true then
-                FarmStep()
-            end
-        end)
     end
 end)
 
@@ -972,13 +1065,12 @@ task.spawn(function()
 
     Tab:Toggle({
         Title = "Auto Treadmill",
-        Desc = "เปิดมินิเกมและกดปุ่มวิ่งอัตโนมัติ",
+        Desc = "เปิดมินิเกมและกดปุ่มวิ่งอัตโนมัติ (ตรงปุ่ม 100%)",
         Icon = "play",
         Type = "Checkbox",
         Value = Config["Auto Treadmill"],
         Callback = function(State)
             Config["Auto Treadmill"] = State
-            getgenv().__BBTrainBeat = 0
 
             if State then
                 Config["Auto Farm Pet"] = false
@@ -988,10 +1080,10 @@ task.spawn(function()
 
     Tab:Slider({
         Title = "Press Delay",
-        Desc = "ระยะห่างระหว่างการกดแต่ละครั้ง (วินาที)",
+        Desc = "ใช้เฉพาะตอนระบบกดภายในหาไม่เจอ (วินาที)",
         Step = 0.01,
         Value = {
-            Min = 0.04,
+            Min = 0.02,
             Max = 0.25,
             Default = Config["Press Delay"],
         },
@@ -1026,12 +1118,10 @@ task.spawn(function()
         Callback = function(Option)
             if Option == "Auto" then
                 Config["Pet Id"] = 0
-                getgenv().__BBTrainPetLabel = nil
                 return
             end
 
             Config["Pet Id"] = tonumber(string.match(Option, "%((%d+)%)")) or 0
-            getgenv().__BBTrainPetLabel = Option
         end,
     })
 
@@ -1101,7 +1191,7 @@ task.spawn(function()
 
     FarmTab:Toggle({
         Title = "Auto Farm Pet",
-        Desc = "ขี่ pet ไปเส้นสตาร์ท กด SPACE อัตโนมัติ แล้ววิ่งเก็บเงินวนซ้ำ",
+        Desc = "ขี่ pet ไปเส้นสตาร์ท กด SPACE ตรงจุด PERFECT แล้ววิ่งเก็บเงินวนซ้ำ",
         Icon = "zap",
         Type = "Checkbox",
         Value = Config["Auto Farm Pet"],
@@ -1110,7 +1200,7 @@ task.spawn(function()
 
             if State then
                 Config["Auto Treadmill"] = false
-                getgenv().__BBTrainBeat = os.clock()
+                NextTravelAt = 0
 
                 pcall(function()
                     PetsRemote:FireServer("List")
@@ -1133,10 +1223,12 @@ task.spawn(function()
 
     local FarmDropdown = FarmTab:Dropdown({
         Title = "Pet ที่ใช้ฟาร์ม",
-        Desc = "เลือก pet ที่จะขี่ออกวิ่ง",
+        Desc = "เลือก pet ที่จะขี่ออกวิ่ง (พิมพ์ค้นหาได้)",
         Values = FarmLabels,
         Value = FarmSelected,
         AllowNone = false,
+        MenuWidth = 220,
+        SearchBarEnabled = true,
         Callback = function(Option)
             if Option == "Auto (แรงสุด)" then
                 Config["Farm Pet Id"] = 0
